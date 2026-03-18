@@ -486,14 +486,20 @@ class GOAPAgent {
     
     // 初始化 - 立即选择目标并开始行动
     init(gameTime) {
+        console.log(`[${this.npc.name}] Initializing GOAP Agent at time ${gameTime}`);
         this.selectGoal(gameTime);
+        console.log(`[${this.npc.name}] Selected goal:`, this.currentGoal);
         this.makePlan();
+        console.log(`[${this.npc.name}] Generated plan with ${this.currentPlan.length} actions`);
         // 立即开始第一个行动
         if (this.currentPlan.length > 0) {
             this.currentAction = this.currentPlan.shift();
             if (this.currentAction) {
                 this.currentAction.reset();
+                console.log(`[${this.npc.name}] Starting first action:`, this.currentAction.name);
             }
+        } else {
+            console.warn(`[${this.npc.name}] No plan generated!`);
         }
     }
 
