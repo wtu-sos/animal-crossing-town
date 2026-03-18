@@ -22,7 +22,42 @@
             <div id="time-display">🌅 06:00</div>
             <div id="coords">X: 0, Y: 0</div>
             <div id="player-energy">⚡ 100%</div>
+            <div id="player-status">🤔 思考中...</div>
             <button id="map-toggle" onclick="toggleMiniMap()">🗺️ 地图</button>
+            <button id="task-toggle" onclick="toggleTaskPanel()">📋 任务</button>
+        </div>
+        
+        <!-- 任务面板 -->
+        <div id="task-panel" style="display: none;">
+            <div class="task-header">
+                <h3>📋 当前任务</h3>
+                <button onclick="toggleTaskPanel()" class="close-btn">✕</button>
+            </div>
+            <div id="current-task-display">
+                <div class="task-icon">🤔</div>
+                <div class="task-name">思考中...</div>
+                <div class="task-desc">正在决定下一步行动</div>
+                <div class="task-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="task-steps">
+                <h4>计划步骤</h4>
+                <ul id="plan-steps">
+                    <li>⏳ 等待计划生成...</li>
+                </ul>
+            </div>
+            <div class="task-selector">
+                <h4>选择新任务</h4>
+                <div id="available-goals" class="goal-buttons">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+            <div class="task-actions">
+                <button id="auto-mode-btn" onclick="setAutoMode()">🔄 恢复自动</button>
+            </div>
         </div>
         
         <!-- 迷你地图 -->
@@ -46,6 +81,7 @@
     <script src="js/player.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/goap.js"></script>
+    <script src="js/PlayerGOAPAgent.js"></script>
     <script src="js/gameplay.js"></script>
     <script src="js/game.js"></script>
 </body>

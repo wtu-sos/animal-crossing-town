@@ -32,6 +32,10 @@ class GameplaySystem {
         const agents = [];
         for (const npc of this.npcs) {
             const agent = new GOAPAgent(npc, npc.role, this.worldState);
+            // 立即初始化，让NPC开始行动
+            if (this.game) {
+                agent.init(this.game.gameTime || 360);
+            }
             agents.push(agent);
         }
         return agents;

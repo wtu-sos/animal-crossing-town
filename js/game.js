@@ -37,6 +37,9 @@ class Game {
         // 迷你地图
         this.minimapVisible = false;
         
+        // 玩家 GOAP Agent
+        this.playerAgent = new PlayerGOAPAgent(this.player, this.gameState);
+        
         // 初始化
         this.init();
         
@@ -84,8 +87,10 @@ class Game {
             };
         }
         
-        // 更新玩家
-        this.player.update(this.input, this.map);
+        // 更新玩家（使用 GOAP 控制）
+        if (this.playerAgent) {
+            this.playerAgent.update(deltaTime, this.map, this.gameplay.npcs);
+        }
         
         // 处理玩家与NPC的碰撞
         if (this.gameplay) {

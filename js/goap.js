@@ -484,6 +484,19 @@ class GOAPAgent {
         return actions;
     }
     
+    // 初始化 - 立即选择目标并开始行动
+    init(gameTime) {
+        this.selectGoal(gameTime);
+        this.makePlan();
+        // 立即开始第一个行动
+        if (this.currentPlan.length > 0) {
+            this.currentAction = this.currentPlan.shift();
+            if (this.currentAction) {
+                this.currentAction.reset();
+            }
+        }
+    }
+
     // 更新状态
     update(deltaTime, gameplay, gameTime) {
         this.planTimer++;
