@@ -148,6 +148,11 @@ class Player {
     
     // 显示吃饭提示
     showEatNotification() {
+        if (typeof document === 'undefined') return;
+        
+        const container = document.getElementById('game-container');
+        if (!container) return;
+        
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: absolute;
@@ -166,7 +171,7 @@ class Player {
         `;
         notification.textContent = '🍜 用餐中...';
         
-        document.getElementById('game-container').appendChild(notification);
+        container.appendChild(notification);
         
         setTimeout(() => {
             notification.style.opacity = '0';
@@ -177,6 +182,11 @@ class Player {
     
     // 显示能量恢复提示
     showEnergyRecoveredNotification(amount) {
+        if (typeof document === 'undefined') return;
+        
+        const container = document.getElementById('game-container');
+        if (!container) return;
+        
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: absolute;
@@ -195,7 +205,7 @@ class Player {
         `;
         notification.textContent = `⚡ 能量恢复 +${Math.floor(amount)}!`;
         
-        document.getElementById('game-container').appendChild(notification);
+        container.appendChild(notification);
         
         setTimeout(() => {
             notification.style.opacity = '0';
