@@ -3,22 +3,38 @@
  */
 class Game {
     constructor() {
+        console.log('Game constructor starting...');
         this.canvas = document.getElementById('gameCanvas');
+        if (!this.canvas) {
+            throw new Error('Canvas element not found!');
+        }
+        console.log('Canvas found');
+        
         this.lastTime = 0;
         this.gameTime = 360;
         this.debug = true; // 开启调试模式
         this.debugInfo = {};
         
         // 初始化系统
+        console.log('Initializing InputManager...');
         this.input = new InputManager();
+        console.log('Initializing Renderer...');
         this.renderer = new Renderer(this.canvas);
+        console.log('Initializing Camera...');
         this.camera = new Camera(window.innerWidth, window.innerHeight);
+        console.log('Initializing GameMap...');
         this.map = new GameMap(32);
+        console.log('GameMap initialized');
         
         // 玩家从自己家出生
+        console.log('Getting player home position...');
         const playerHomePos = this.map.getBuildingPosition('playerHouse');
+        if (!playerHomePos) {
+            throw new Error('Player home position not found!');
+        }
         let spawnX = playerHomePos.x;
         let spawnY = playerHomePos.y;
+        console.log('Player home position:', spawnX, spawnY);
         
         // 在门口生成（稍微向下偏移）
         spawnY += 40;
@@ -29,7 +45,9 @@ class Game {
         this.camera.setBounds(this.map.pixelWidth, this.map.pixelHeight);
         
         // 初始化玩法系统
+        console.log('Initializing GameplaySystem...');
         this.gameplay = new GameplaySystem(this);
+        console.log('GameplaySystem initialized');
         
         // 定期更新NPC（GOAP驱动）
         this.lastNPCUpdate = 0;
@@ -55,8 +73,10 @@ class Game {
     }
     
     init() {
+        console.log('Game.init() called');
         this.resize();
         window.addEventListener('resize', () => this.resize());
+        console.log('Starting game loop...');
         requestAnimationFrame((t) => this.loop(t));
     }
     
@@ -67,11 +87,15 @@ class Game {
     }
     
     loop(timestamp) {
-        const deltaTime = timestamp - this.lastTime;
-        this.lastTime = timestamp;
-        
-        this.update(deltaTime);
-        this.render();
+        try {
+            const deltaTime = timestamp - this.lastTime;
+            this.lastTime = timestamp;
+            
+            this.update(deltaTime);
+            this.render();
+        } catch (e) {
+            console.error('Error in game loop:', e);
+        }
         
         requestAnimationFrame((t) => this.loop(t));
     }
@@ -390,5 +414,12 @@ setInterval(() => {
 }, 500);
 
 window.addEventListener('load', () => {
-    window.game = new Game();
+    try {
+        console.log('Game starting...');
+        window.game = new Game();
+        console.log('Game started successfully!');
+    } catch (e) {
+        console.error('Game initialization failed:', e);
+        alert('游戏初始化失败: ' + e.message);
+    }
 });
