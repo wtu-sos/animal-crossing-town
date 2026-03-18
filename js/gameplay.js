@@ -129,15 +129,20 @@ class GameplaySystem {
                 e.preventDefault();
                 this.handleAction();
             }
-            
+
             // 数字键切换工具
             if (e.key >= '1' && e.key <= '4') {
                 this.switchTool(parseInt(e.key));
             }
-            
+
             // B键打开背包
             if (e.key.toLowerCase() === 'b') {
                 this.toggleInventory();
+            }
+
+            // G键显示GOAP状态
+            if (e.key.toLowerCase() === 'g') {
+                this.showGOAPPanel();
             }
         });
     }
@@ -499,6 +504,65 @@ class GameplaySystem {
         }, 2000);
     }
     
+    // 显示GOAP状态面板
+    showGOAPPanel() {
+        let panel = document.getElementById('goap-panel');
+        if (panel) {
+            panel.remove();
+            return;
+        }
+        
+        panel = document.createElement('div');
+        panel.id = 'goap-panel';
+        panel.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            min-width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+            border: 2px solid #667eea;
+        `;
+        
+        let html = '<h3 style="margin: 0 0 15px 0; color: #667eea;">🧠 NPC GOAP状态</h3>';
+        
+        for (let i = 0; i < this.npcs.length; i++) {
+            const npc = this.npcs[i];
+            const agent = this.agents[i];
+            const config = NPC_ROLES[npc.name] || {};
+            
+            html += `<div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px;">`;
+            html += `<div style="font-weight: bold; color: ${npc.color};">${config.icon} ${npc.name}</div>`;
+            html += `<div style="font-size: 12px; color: #aaa;">身份: ${npc.role}</div>`;
+            html += `<div style="font-size: 12px; margin-top: 5px;">能量: ${Math.floor(npc.energy)}%</div>`;
+            html += `<div style="font-size: 12px; color: #FFD700;">当前: ${getNPCStatus(npc, agent)}</div>`;
+            
+            if (agent && agent.currentPlan && agent.currentPlan.length > 0) {
+                html += `<div style="font-size: 11px; color: #aaa; margin-top: 5px;">计划:</div>`;
+                html += `<div style="font-size: 10px; color: #888;">`;
+                agent.currentPlan.slice(0, 3).forEach((action, idx) => {
+                    html += `${idx + 1}. ${action.name}<br>`;
+                });
+                if (agent.currentPlan.length > 3) {
+                    html += `...还有${agent.currentPlan.length - 3}个行动`;
+                }
+                html += `</div>`;
+            }
+            
+            html += `</div>`;
+        }
+        
+        html += '<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; font-size: 11px; color: #666;">按 G 键关闭</div>';
+        
+        panel.innerHTML = html;
+        document.getElementById('game-container').appendChild(panel);
+    }
+    
     // 打开/关闭背包
     toggleInventory() {
         let inventoryPanel = document.getElementById('inventory-panel');
@@ -630,38 +694,63 @@ class GameplaySystem {
     
     // 渲染NPC
     renderNPCs(ctx, camera) {
-        for (const npc of this.npcs) {
+        for (let i = 0; i < this.npcs.length; i++) {
+            const npc = this.npcs[i];
+            const agent = this.agents[i];
             const screenX = npc.x - camera.x;
             const screenY = npc.y - camera.y;
-            
+
             // 跳过屏幕外的NPC
-            if (screenX < -50 || screenX > camera.width + 50 ||
-                screenY < -50 || screenY > camera.height + 50) {
+            if (screenX < -80 || screenX > camera.width + 80 ||
+                screenY < -80 || screenY > camera.height + 80) {
                 continue;
             }
-            
+
             const bobOffset = Math.sin(npc.animationFrame * Math.PI / 2) * 2;
-            
+            const config = NPC_ROLES[npc.name] || { icon: '👤' };
+
+            // 绘制NPC头顶状态
+            const status = getNPCStatus(npc, agent);
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(screenX - 35, screenY - 45 + bobOffset, 70, 16);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(status, screenX, screenY - 34 + bobOffset);
+
+            // 身份图标
+            ctx.font = '14px sans-serif';
+            ctx.fillText(config.icon, screenX, screenY - 50 + bobOffset);
+
             // 身体
             ctx.fillStyle = npc.color;
             ctx.fillRect(screenX - 8, screenY - 4 + bobOffset, 16, 14);
-            
+
             // 头部
             ctx.fillStyle = '#FFDBAC';
             ctx.beginPath();
             ctx.arc(screenX, screenY - 10 + bobOffset, 8, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // 眼睛
             ctx.fillStyle = '#000';
             ctx.fillRect(screenX - 4, screenY - 10 + bobOffset, 2, 2);
             ctx.fillRect(screenX + 2, screenY - 10 + bobOffset, 2, 2);
-            
+
             // 名字
             ctx.fillStyle = '#fff';
-            ctx.font = '10px sans-serif';
+            ctx.font = 'bold 10px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(npc.name, screenX, screenY - 20 + bobOffset);
+
+            // 能量条
+            const energy = npc.energy || 100;
+            const barWidth = 24;
+            const barHeight = 3;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(screenX - barWidth/2, screenY + 12 + bobOffset, barWidth, barHeight);
+            ctx.fillStyle = energy > 50 ? '#4CAF50' : energy > 25 ? '#FFC107' : '#F44336';
+            ctx.fillRect(screenX - barWidth/2, screenY + 12 + bobOffset, barWidth * (energy/100), barHeight);
         }
     }
 }

@@ -496,6 +496,7 @@ const NPC_ROLES = {
         homePos: { x: 200, y: 200 },
         workPos: { x: 400, y: 300 },
         color: '#FF6B6B',
+        icon: '🌸',
         dialogues: ['我喜欢种花！', '今天的花开得真好~', '要不要买点花种子？']
     },
     小橘: {
@@ -503,6 +504,7 @@ const NPC_ROLES = {
         homePos: { x: 600, y: 200 },
         workPos: { x: 800, y: 400 }, // 水边
         color: '#4ECDC4',
+        icon: '🎣',
         dialogues: ['钓鱼需要耐心~', '今天我钓到了大鱼！', '要不要一起去钓鱼？']
     },
     小白: {
@@ -510,6 +512,25 @@ const NPC_ROLES = {
         homePos: { x: 400, y: 600 },
         workPos: { x: 700, y: 700 },
         color: '#FFE66D',
+        icon: '⛏️',
         dialogues: ['山里有好多矿石！', '挖矿可是体力活~', '小心别被砸到！']
     }
 };
+
+// NPC状态显示
+function getNPCStatus(npc, agent) {
+    if (!agent || !agent.currentAction) return '💤 空闲';
+    
+    const actionName = agent.currentAction.name;
+    
+    if (actionName === 'Rest') return '😴 休息中';
+    if (actionName === 'Fish') return '🎣 钓鱼中';
+    if (actionName === 'PlantFlower') return '🌱 种花中';
+    if (actionName === 'WaterFlower') return '💧 浇花中';
+    if (actionName === 'ChopTree') return '🪓 工作中';
+    if (actionName === 'Eat') return '🍎 进食中';
+    if (actionName.startsWith('MoveTo')) return '🚶 移动中';
+    if (actionName === 'InteractWithPlayer') return '💬 对话中';
+    
+    return '🎯 工作中';
+}
