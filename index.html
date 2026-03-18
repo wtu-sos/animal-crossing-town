@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🌲 小镇漫游 - Animal Crossing Style</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- 虚拟摇杆 (移动端显示) -->
+        <div id="joystick-zone">
+            <div id="joystick-base">
+                <div id="joystick-stick"></div>
+            </div>
+        </div>
+        
+        <!-- UI 层 -->
+        <div id="ui-layer">
+            <div id="time-display">🌅 06:00</div>
+            <div id="coords">X: 0, Y: 0</div>
+        </div>
+        
+        <!-- 操作提示 -->
+        <div id="controls-hint">
+            <span class="pc">⌨️ WASD 移动</span>
+            <span class="mobile">🎮 拖动摇杆移动</span>
+        </div>
+    </div>
+    
+    <!-- 游戏脚本 -->
+    <script src="js/input.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
