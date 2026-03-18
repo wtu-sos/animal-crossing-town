@@ -410,6 +410,40 @@ class Renderer {
         const centerX = screenX + player.width / 2;
         const centerY = screenY + player.height / 2;
         
+        // 如果正在吃饭，显示吃饭图标
+        if (player.isEating) {
+            this.ctx.font = '20px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('🍜', centerX, screenY - 10);
+        }
+        
+        // 绘制玩家能量条
+        const energyPercent = player.getEnergyPercent();
+        const barWidth = 28;
+        const barHeight = 4;
+        
+        // 能量条背景
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(centerX - barWidth/2, screenY - 12, barWidth, barHeight);
+        
+        // 能量条颜色（根据能量值）
+        if (energyPercent > 50) {
+            this.ctx.fillStyle = '#4CAF50'; // 绿色
+        } else if (energyPercent > 25) {
+            this.ctx.fillStyle = '#FFC107'; // 黄色
+        } else {
+            this.ctx.fillStyle = '#F44336'; // 红色
+        }
+        this.ctx.fillRect(centerX - barWidth/2, screenY - 12, barWidth * (energyPercent/100), barHeight);
+        
+        // 能量低时显示警告
+        if (energyPercent < 20) {
+            this.ctx.font = '12px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = '#F44336';
+            this.ctx.fillText('😫', centerX, screenY - 18);
+        }
+        
         // 阴影
         this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
         this.ctx.beginPath();
@@ -463,20 +497,39 @@ class Renderer {
     }
     
     // 绘制 UI
-    drawUI(time, playerX, playerY) {
+    drawUI(time, playerX, playerY, player) {
         // 更新 DOM 元素
         const timeDisplay = document.getElementById('time-display');
         const coords = document.getElementById('coords');
-        
+        const energyDisplay = document.getElementById('player-energy');
+
         if (timeDisplay) {
             const hours = Math.floor(time / 60);
             const minutes = time % 60;
             const icon = hours < 6 || hours > 18 ? '🌙' : hours < 12 ? '🌅' : '☀️';
             timeDisplay.textContent = `${icon} ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         }
-        
+
         if (coords) {
             coords.textContent = `X: ${Math.floor(playerX)}, Y: ${Math.floor(playerY)}`;
+        }
+
+        // 更新玩家能量显示
+        if (energyDisplay && player) {
+            const energyPercent = Math.floor(player.getEnergyPercent());
+            energyDisplay.textContent = `⚡ ${energyPercent}%`;
+
+            // 能量低时添加警告样式
+            if (energyPercent < 30) {
+                energyDisplay.classList.add('low');
+                energyDisplay.style.color = '#F44336';
+            } else if (energyPercent < 50) {
+                energyDisplay.classList.remove('low');
+                energyDisplay.style.color = '#FFC107';
+            } else {
+                energyDisplay.classList.remove('low');
+                energyDisplay.style.color = '#4CAF50';
+            }
         }
     }
 }

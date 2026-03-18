@@ -126,7 +126,7 @@ class Game {
         }
         
         this.renderer.drawPlayer(this.player, this.camera);
-        this.renderer.drawUI(this.gameTime, this.player.x, this.player.y);
+        this.renderer.drawUI(this.gameTime, this.player.x, this.player.y, this.player);
         
         // 绘制调试信息
         if (this.debug) {

@@ -117,33 +117,40 @@ class GameplaySystem {
     handleAction() {
         const player = this.game.player;
         const map = this.game.map;
-        
+
         // 检查是否与NPC对话
         const nearbyNPC = this.getNearbyNPC();
         if (nearbyNPC) {
             this.talkToNPC(nearbyNPC);
             return;
         }
-        
+
+        // 检查是否在饭店附近并可以吃饭
+        if (player.isNearRestaurant(map)) {
+            if (player.startEating()) {
+                return;
+            }
+        }
+
         // 检查是否在水边钓鱼
         if (this.isNearWater()) {
             this.startFishing();
             return;
         }
-        
+
         // 检查是否靠近花朵可收集
         const flower = this.getNearbyFlower();
         if (flower) {
             this.collectFlower(flower);
             return;
         }
-        
+
         // 检查是否可以种树
         if (this.tool === 'shovel' && this.canPlant()) {
             this.plantTree();
             return;
         }
-        
+
         // 检查是否可以砍树
         if (this.tool === 'axe') {
             const tree = this.getNearbyTree();
