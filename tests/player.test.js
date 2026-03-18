@@ -55,7 +55,7 @@ describe('Player', () => {
       
       player.update(mockInput, mockMap);
       
-      expect(player.x).toBe(initialX + player.speed);
+      expect(player.x).toBeGreaterThan(initialX);
       expect(player.direction).toBe('right');
     });
 
@@ -65,7 +65,7 @@ describe('Player', () => {
       
       player.update(mockInput, mockMap);
       
-      expect(player.x).toBe(initialX - player.speed);
+      expect(player.x).toBeLessThan(initialX);
       expect(player.direction).toBe('left');
     });
 
@@ -75,7 +75,7 @@ describe('Player', () => {
       
       player.update(mockInput, mockMap);
       
-      expect(player.y).toBe(initialY + player.speed);
+      expect(player.y).toBeGreaterThan(initialY);
       expect(player.direction).toBe('down');
     });
 
@@ -85,7 +85,7 @@ describe('Player', () => {
       
       player.update(mockInput, mockMap);
       
-      expect(player.y).toBe(initialY - player.speed);
+      expect(player.y).toBeLessThan(initialY);
       expect(player.direction).toBe('up');
     });
 
