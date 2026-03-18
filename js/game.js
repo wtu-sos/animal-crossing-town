@@ -76,7 +76,10 @@ class Game {
         console.log('Game.init() called');
         this.resize();
         window.addEventListener('resize', () => this.resize());
-        console.log('Starting game loop...');
+        console.log('Starting game loop at 30 FPS...');
+        this.targetFPS = 30;
+        this.frameInterval = 1000 / this.targetFPS;
+        this.lastFrameTime = 0;
         requestAnimationFrame((t) => this.loop(t));
     }
     
@@ -88,6 +91,14 @@ class Game {
     
     loop(timestamp) {
         try {
+            // 30 FPS 限制
+            const elapsed = timestamp - this.lastFrameTime;
+            if (elapsed < this.frameInterval) {
+                requestAnimationFrame((t) => this.loop(t));
+                return;
+            }
+            this.lastFrameTime = timestamp - (elapsed % this.frameInterval);
+            
             const deltaTime = timestamp - this.lastTime;
             this.lastTime = timestamp;
             
@@ -335,14 +346,15 @@ function toggleTaskPanel() {
         const isVisible = panel.style.display !== 'none';
         panel.style.display = isVisible ? 'none' : 'block';
         
-        // 如果显示面板，更新内容
+        // 如果显示面板，初始化按钮并更新内容
         if (!isVisible && window.game && window.game.playerAgent) {
+            initTaskPanelButtons(); // 首次打开时初始化按钮
             updateTaskPanel();
         }
     }
 }
 
-// 更新任务面板内容
+// 更新任务面板内容 - 只更新状态，不重新渲染按钮（按钮已在初始化时创建）
 function updateTaskPanel() {
     if (!window.game || !window.game.playerAgent) return;
     
@@ -365,7 +377,9 @@ function updateTaskPanel() {
     if (planSteps) {
         const steps = agent.getPlanSteps();
         if (steps.length === 0) {
-            planSteps.innerHTML = '<li>⏳ 等待计划生成...</li>';
+            if (planSteps.innerHTML.indexOf('等待计划') === -1) {
+                planSteps.innerHTML = '<li>⏳ 等待计划生成...</li>';
+            }
         } else {
             planSteps.innerHTML = steps.map(step => 
                 `<li class="${step.status}">${step.icon} ${step.name}</li>`
@@ -373,20 +387,49 @@ function updateTaskPanel() {
         }
     }
     
-    // 更新可用目标按钮
+    // 只更新按钮的 active 状态，不重新渲染
+    updateGoalButtonsActiveState(agent);
+}
+
+// 更新目标按钮的 active 状态（不重新渲染按钮）
+function updateGoalButtonsActiveState(agent) {
     const goalsContainer = document.getElementById('available-goals');
-    if (goalsContainer) {
-        const goals = agent.getAvailableGoals();
-        const currentGoalId = agent.currentGoal ? agent.currentGoal.id : null;
-        
-        goalsContainer.innerHTML = goals.map(goal => `
-            <button class="goal-btn ${goal.id === currentGoalId ? 'active' : ''}" 
-                    onclick="setPlayerGoal('${goal.id}')">
-                <span class="icon">${goal.icon}</span>
-                <span class="name">${goal.name}</span>
-            </button>
-        `).join('');
-    }
+    if (!goalsContainer) return;
+    
+    const currentGoalId = agent.currentGoal ? agent.currentGoal.id : null;
+    const buttons = goalsContainer.querySelectorAll('.goal-btn');
+    
+    buttons.forEach(btn => {
+        // 从 onclick 属性中提取 goal id
+        const match = btn.getAttribute('onclick');
+        if (match) {
+            const goalId = match.match(/'([^']+)'/)[1];
+            if (goalId === currentGoalId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    });
+}
+
+// 初始化任务面板按钮（只调用一次）
+function initTaskPanelButtons() {
+    if (!window.game || !window.game.playerAgent) return;
+    
+    const agent = window.game.playerAgent;
+    const goalsContainer = document.getElementById('available-goals');
+    if (!goalsContainer || goalsContainer.children.length > 0) return; // 已初始化
+    
+    const goals = agent.getAvailableGoals();
+    
+    goalsContainer.innerHTML = goals.map(goal => `
+        <button class="goal-btn" data-goal-id="${goal.id}"
+                onclick="setPlayerGoal('${goal.id}')">
+            <span class="icon">${goal.icon}</span>
+            <span class="name">${goal.name}</span>
+        </button>
+    `).join('');
 }
 
 // 设置玩家目标
@@ -405,13 +448,49 @@ function setAutoMode() {
     }
 }
 
-// 定期更新任务面板（如果打开）
+// 定期更新任务面板（如果打开）- 只更新文本，不重新渲染按钮
+let lastTaskPanelUpdate = 0;
 setInterval(() => {
     const panel = document.getElementById('task-panel');
-    if (panel && panel.style.display !== 'none' && window.game) {
-        updateTaskPanel();
+    if (panel && panel.style.display !== 'none' && window.game && window.game.playerAgent) {
+        const now = Date.now();
+        if (now - lastTaskPanelUpdate >= 500) {
+            lastTaskPanelUpdate = now;
+            // 只更新状态文本，不重新渲染按钮
+            updateTaskPanelStatusOnly();
+        }
     }
 }, 500);
+
+// 只更新任务面板状态（不重新渲染按钮）
+function updateTaskPanelStatusOnly() {
+    if (!window.game || !window.game.playerAgent) return;
+    
+    const agent = window.game.playerAgent;
+    const status = agent.getCurrentStatus();
+    
+    // 只更新当前任务显示
+    const taskIcon = document.querySelector('#current-task-display .task-icon');
+    const taskName = document.querySelector('#current-task-display .task-name');
+    const taskDesc = document.querySelector('#current-task-display .task-desc');
+    const progressFill = document.querySelector('#current-task-display .progress-fill');
+    
+    if (taskIcon) taskIcon.textContent = status.icon || '🤔';
+    if (taskName) taskName.textContent = status.goal ? status.goal.name : '思考中...';
+    if (taskDesc) taskDesc.textContent = status.action || '正在决定下一步行动';
+    if (progressFill) progressFill.style.width = (status.progress || 0) + '%';
+    
+    // 更新计划步骤（只更新文本）
+    const planSteps = document.getElementById('plan-steps');
+    if (planSteps) {
+        const steps = agent.getPlanSteps();
+        if (steps.length === 0) {
+            if (planSteps.innerHTML.indexOf('等待计划') === -1) {
+                planSteps.innerHTML = '<li>⏳ 等待计划生成...</li>';
+            }
+        }
+    }
+}
 
 window.addEventListener('load', () => {
     try {
