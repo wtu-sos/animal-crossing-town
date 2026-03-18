@@ -1,0 +1,552 @@
+/**
+ * 游戏玩法系统 - 收集、种植、钓鱼、背包等
+ */
+class GameplaySystem {
+    constructor(game) {
+        this.game = game;
+        this.inventory = {
+            flowers: [],
+            fish: [],
+            fruits: []
+        };
+        this.tool = null; // 当前工具: 'net', 'rod', 'shovel', 'axe'
+        this.isFishing = false;
+        this.fishingMiniGame = null;
+        this.plantedFlowers = [];
+        
+        // 初始化NPC
+        this.npcs = this.generateNPCs();
+        
+        // 绑定按键
+        this.bindKeys();
+    }
+    
+    // 生成NPC
+    generateNPCs() {
+        const npcs = [];
+        const names = ['阿狸', '小橘', '小白', '旺财', '花花'];
+        const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181'];
+        
+        for (let i = 0; i < 3; i++) {
+            let x, y;
+            let safe = false;
+            while (!safe) {
+                x = Math.random() * this.game.map.pixelWidth;
+                y = Math.random() * this.game.map.pixelHeight;
+                if (!this.game.map.checkCollision(x, y, 24, 24)) {
+                    safe = true;
+                }
+            }
+            
+            npcs.push({
+                x: x,
+                y: y,
+                name: names[i],
+                color: colors[i],
+                dialogues: this.getNPCDialogues(i),
+                currentDialogue: 0,
+                direction: 'down',
+                animationFrame: 0
+            });
+        }
+        return npcs;
+    }
+    
+    // NPC对话
+    getNPCDialogues(index) {
+        const dialogues = [
+            ['你好呀！欢迎来到小镇！', '这里的花都很漂亮呢~', '你可以收集花朵哦！'],
+            ['听说河边可以钓到鱼！', '你要试试钓鱼吗？', '按空格键在水边试试！'],
+            ['我喜欢在这里种花~', '你也可以试着种花哦！', '背包里有种子就能种！']
+        ];
+        return dialogues[index] || ['你好！'];
+    }
+    
+    // 绑定按键
+    bindKeys() {
+        window.addEventListener('keydown', (e) => {
+            // 空格键 - 互动/钓鱼/对话
+            if (e.code === 'Space') {
+                e.preventDefault();
+                this.handleAction();
+            }
+            
+            // 数字键切换工具
+            if (e.key >= '1' && e.key <= '4') {
+                this.switchTool(parseInt(e.key));
+            }
+            
+            // B键打开背包
+            if (e.key.toLowerCase() === 'b') {
+                this.toggleInventory();
+            }
+        });
+    }
+    
+    // 处理互动
+    handleAction() {
+        const player = this.game.player;
+        const map = this.game.map;
+        
+        // 检查是否与NPC对话
+        const nearbyNPC = this.getNearbyNPC();
+        if (nearbyNPC) {
+            this.talkToNPC(nearbyNPC);
+            return;
+        }
+        
+        // 检查是否在水边钓鱼
+        if (this.isNearWater()) {
+            this.startFishing();
+            return;
+        }
+        
+        // 检查是否靠近花朵可收集
+        const flower = this.getNearbyFlower();
+        if (flower) {
+            this.collectFlower(flower);
+            return;
+        }
+        
+        // 检查是否可以种树
+        if (this.tool === 'shovel' && this.canPlant()) {
+            this.plantTree();
+            return;
+        }
+        
+        // 检查是否可以砍树
+        if (this.tool === 'axe') {
+            const tree = this.getNearbyTree();
+            if (tree) {
+                this.chopTree(tree);
+                return;
+            }
+        }
+    }
+    
+    // 获取附近的NPC
+    getNearbyNPC() {
+        for (const npc of this.npcs) {
+            const dx = this.game.player.x - npc.x;
+            const dy = this.game.player.y - npc.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < 50) {
+                return npc;
+            }
+        }
+        return null;
+    }
+    
+    // 与NPC对话
+    talkToNPC(npc) {
+        const dialogue = npc.dialogues[npc.currentDialogue];
+        this.showDialogue(npc.name, dialogue);
+        npc.currentDialogue = (npc.currentDialogue + 1) % npc.dialogues.length;
+    }
+    
+    // 显示对话
+    showDialogue(name, text) {
+        // 移除旧的对话框
+        const oldDialogue = document.getElementById('dialogue-box');
+        if (oldDialogue) oldDialogue.remove();
+        
+        // 创建对话框
+        const dialogueBox = document.createElement('div');
+        dialogueBox.id = 'dialogue-box';
+        dialogueBox.style.cssText = `
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 30px;
+            border-radius: 15px;
+            border: 3px solid #667eea;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 100;
+            animation: popIn 0.3s ease;
+        `;
+        dialogueBox.innerHTML = `
+            <div style="font-weight: bold; color: #667eea; margin-bottom: 10px;">${name}</div>
+            <div style="color: #333;">${text}</div>
+            <div style="font-size: 12px; color: #999; margin-top: 10px;">按空格键继续</div>
+        `;
+        
+        document.getElementById('game-container').appendChild(dialogueBox);
+        
+        // 3秒后自动关闭
+        setTimeout(() => {
+            if (dialogueBox.parentNode) {
+                dialogueBox.style.opacity = '0';
+                dialogueBox.style.transition = 'opacity 0.5s';
+                setTimeout(() => dialogueBox.remove(), 500);
+            }
+        }, 5000);
+    }
+    
+    // 检查是否在水边
+    isNearWater() {
+        const player = this.game.player;
+        const map = this.game.map;
+        const checkPoints = [
+            { x: player.x + 30, y: player.y },
+            { x: player.x - 30, y: player.y },
+            { x: player.x, y: player.y + 30 },
+            { x: player.x, y: player.y - 30 }
+        ];
+        
+        for (const point of checkPoints) {
+            const tileX = Math.floor(point.x / map.tileSize);
+            const tileY = Math.floor(point.y / map.tileSize);
+            if (map.getTile(tileX, tileY) === map.TILE_TYPES.WATER) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // 开始钓鱼
+    startFishing() {
+        if (this.isFishing) return;
+        
+        this.isFishing = true;
+        this.showNotification('🎣 按空格键钓鱼！当感叹号出现时快速按空格！');
+        
+        // 钓鱼小游戏
+        setTimeout(() => {
+            this.fishingBite();
+        }, 2000 + Math.random() * 3000);
+    }
+    
+    // 鱼咬钩
+    fishingBite() {
+        if (!this.isFishing) return;
+        
+        this.showNotification('❗ 鱼咬钩了！快按空格！', '#ff4444');
+        
+        let caught = false;
+        const catchWindow = 1000; // 1秒反应时间
+        
+        const checkCatch = (e) => {
+            if (e.code === 'Space' && !caught) {
+                caught = true;
+                window.removeEventListener('keydown', checkCatch);
+                this.catchFish();
+            }
+        };
+        
+        window.addEventListener('keydown', checkCatch);
+        
+        setTimeout(() => {
+            if (!caught) {
+                window.removeEventListener('keydown', checkCatch);
+                this.showNotification('😅 鱼跑掉了...', '#999');
+                this.isFishing = false;
+            }
+        }, catchWindow);
+    }
+    
+    // 钓到鱼
+    catchFish() {
+        const fishTypes = ['🐟 鲤鱼', '🐠 金鱼', '🦈 鲨鱼', '🐡 河豚', '🦑 鱿鱼'];
+        const fish = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+        
+        this.inventory.fish.push(fish);
+        this.showNotification(`🎉 钓到了 ${fish}！`, '#ffd700');
+        this.isFishing = false;
+    }
+    
+    // 获取附近的花朵
+    getNearbyFlower() {
+        const player = this.game.player;
+        const map = this.game.map;
+        
+        for (let i = map.objects.length - 1; i >= 0; i--) {
+            const obj = map.objects[i];
+            if (obj.type === 'flower') {
+                const dx = player.x - obj.x;
+                const dy = player.y - obj.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 40) {
+                    return { obj, index: i };
+                }
+            }
+        }
+        return null;
+    }
+    
+    // 收集花朵
+    collectFlower(flowerData) {
+        const { obj, index } = flowerData;
+        const colors = ['红色', '黄色', '粉色', '紫色'];
+        const flowerName = colors[obj.variant] + '花朵';
+        
+        this.inventory.flowers.push({
+            name: flowerName,
+            variant: obj.variant,
+            x: obj.x,
+            y: obj.y
+        });
+        
+        // 从地图上移除
+        this.game.map.objects.splice(index, 1);
+        
+        this.showNotification(`🌸 收集了 ${flowerName}！`, '#ff69b4');
+    }
+    
+    // 获取附近的树
+    getNearbyTree() {
+        const player = this.game.player;
+        const map = this.game.map;
+        
+        for (const obj of map.objects) {
+            if (obj.type === 'tree') {
+                const dx = player.x - obj.x;
+                const dy = player.y - obj.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 50) {
+                    return obj;
+                }
+            }
+        }
+        return null;
+    }
+    
+    // 砍树
+    chopTree(tree) {
+        tree.shaking = true;
+        this.showNotification('🪓 正在砍树...');
+        
+        setTimeout(() => {
+            tree.shaking = false;
+            // 随机掉落
+            if (Math.random() > 0.5) {
+                this.inventory.fruits.push('🍎 苹果');
+                this.showNotification('🍎 获得了苹果！', '#ff6b6b');
+            }
+        }, 500);
+    }
+    
+    // 检查是否可以种植
+    canPlant() {
+        const player = this.game.player;
+        const map = this.game.map;
+        const tileX = Math.floor(player.x / map.tileSize);
+        const tileY = Math.floor(player.y / map.tileSize);
+        
+        return map.getTile(tileX, tileY) === map.TILE_TYPES.GRASS &&
+               !map.checkCollision(player.x, player.y, 24, 24);
+    }
+    
+    // 种植花朵
+    plantTree() {
+        if (this.inventory.flowers.length === 0) {
+            this.showNotification('🌱 没有种子可以种植！', '#999');
+            return;
+        }
+        
+        const player = this.game.player;
+        const seed = this.inventory.flowers.pop();
+        
+        this.game.map.objects.push({
+            type: 'flower',
+            x: Math.floor(player.x / 32) * 32,
+            y: Math.floor(player.y / 32) * 32,
+            tileX: Math.floor(player.x / 32),
+            tileY: Math.floor(player.y / 32),
+            variant: seed.variant,
+            interactive: false
+        });
+        
+        this.showNotification('🌱 种下了 ' + seed.name + '！', '#32cd32');
+    }
+    
+    // 切换工具
+    switchTool(toolNum) {
+        const tools = [null, 'net', 'rod', 'shovel', 'axe'];
+        this.tool = tools[toolNum];
+        
+        const toolNames = {
+            null: '空手',
+            net: '捕虫网',
+            rod: '钓鱼竿',
+            shovel: '铲子',
+            axe: '斧头'
+        };
+        
+        this.showNotification(`🛠️ 工具: ${toolNames[this.tool]}`, '#667eea');
+        this.updateToolDisplay();
+    }
+    
+    // 更新工具显示
+    updateToolDisplay() {
+        let toolDisplay = document.getElementById('tool-display');
+        if (!toolDisplay) {
+            toolDisplay = document.createElement('div');
+            toolDisplay.id = 'tool-display';
+            toolDisplay.style.cssText = `
+                position: absolute;
+                top: 60px;
+                left: 20px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 8px 15px;
+                border-radius: 20px;
+                font-size: 14px;
+                z-index: 50;
+            `;
+            document.getElementById('ui-layer').appendChild(toolDisplay);
+        }
+        
+        const toolIcons = {
+            null: '✋',
+            net: '🦋',
+            rod: '🎣',
+            shovel: '🔨',
+            axe: '🪓'
+        };
+        
+        toolDisplay.textContent = `${toolIcons[this.tool]} 当前工具`;
+    }
+    
+    // 显示通知
+    showNotification(text, color = '#fff') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: ${color};
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 200;
+            animation: fadeInOut 2s ease;
+            pointer-events: none;
+        `;
+        notification.textContent = text;
+        
+        document.getElementById('game-container').appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.5s';
+            setTimeout(() => notification.remove(), 500);
+        }, 2000);
+    }
+    
+    // 打开/关闭背包
+    toggleInventory() {
+        let inventoryPanel = document.getElementById('inventory-panel');
+        
+        if (inventoryPanel) {
+            inventoryPanel.remove();
+            return;
+        }
+        
+        inventoryPanel = document.createElement('div');
+        inventoryPanel.id = 'inventory-panel';
+        inventoryPanel.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            border: 3px solid #667eea;
+            min-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 150;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+        `;
+        
+        let html = '<h3 style="margin: 0 0 20px 0; color: #667eea;">🎒 背包</h3>';
+        
+        // 花朵
+        html += '<div style="margin-bottom: 15px;"><strong>🌸 花朵:</strong> ' + 
+                (this.inventory.flowers.length || '无') + '</div>';
+        
+        // 鱼
+        html += '<div style="margin-bottom: 15px;"><strong>🐟 鱼:</strong> ' + 
+                (this.inventory.fish.length ? this.inventory.fish.join(', ') : '无') + '</div>';
+        
+        // 水果
+        html += '<div style="margin-bottom: 15px;"><strong>🍎 水果:</strong> ' + 
+                (this.inventory.fruits.length ? this.inventory.fruits.join(', ') : '无') + '</div>';
+        
+        // 操作提示
+        html += '<div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">';
+        html += '按 B 键关闭背包';
+        html += '</div>';
+        
+        inventoryPanel.innerHTML = html;
+        document.getElementById('game-container').appendChild(inventoryPanel);
+    }
+    
+    // 更新NPC动画
+    updateNPCs() {
+        for (const npc of this.npcs) {
+            npc.animationFrame = (npc.animationFrame + 1) % 4;
+        }
+    }
+    
+    // 渲染NPC
+    renderNPCs(ctx, camera) {
+        for (const npc of this.npcs) {
+            const screenX = npc.x - camera.x;
+            const screenY = npc.y - camera.y;
+            
+            // 跳过屏幕外的NPC
+            if (screenX < -50 || screenX > camera.width + 50 ||
+                screenY < -50 || screenY > camera.height + 50) {
+                continue;
+            }
+            
+            const bobOffset = Math.sin(npc.animationFrame * Math.PI / 2) * 2;
+            
+            // 身体
+            ctx.fillStyle = npc.color;
+            ctx.fillRect(screenX - 8, screenY - 4 + bobOffset, 16, 14);
+            
+            // 头部
+            ctx.fillStyle = '#FFDBAC';
+            ctx.beginPath();
+            ctx.arc(screenX, screenY - 10 + bobOffset, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 眼睛
+            ctx.fillStyle = '#000';
+            ctx.fillRect(screenX - 4, screenY - 10 + bobOffset, 2, 2);
+            ctx.fillRect(screenX + 2, screenY - 10 + bobOffset, 2, 2);
+            
+            // 名字
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(npc.name, screenX, screenY - 20 + bobOffset);
+        }
+    }
+}
+
+// 添加动画样式
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes popIn {
+        0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+        100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+    }
+`;
+document.head.appendChild(style);

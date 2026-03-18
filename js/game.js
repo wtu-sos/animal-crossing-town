@@ -46,6 +46,12 @@ class Game {
         // 设置相机边界
         this.camera.setBounds(this.map.pixelWidth, this.map.pixelHeight);
         
+        // 初始化玩法系统
+        this.gameplay = new GameplaySystem(this);
+        
+        // 定期更新NPC动画
+        setInterval(() => this.gameplay.updateNPCs(), 200);
+        
         // 初始化
         this.init();
         
@@ -119,6 +125,12 @@ class Game {
             this.camera.width, this.camera.height
         );
         this.renderer.drawObjects(visibleObjects, this.camera, this.map.tileSize);
+        
+        // 渲染NPC
+        if (this.gameplay) {
+            this.gameplay.renderNPCs(this.renderer.ctx, this.camera);
+        }
+        
         this.renderer.drawPlayer(this.player, this.camera);
         this.renderer.drawUI(this.gameTime, this.player.x, this.player.y);
         
