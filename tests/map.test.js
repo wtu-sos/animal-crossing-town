@@ -186,29 +186,9 @@ describe('GameMap', () => {
   });
 
   describe('噪声生成', () => {
-    test('simpleNoise 应该返回 0-1 之间的值', () => {
-      const noise1 = map.simpleNoise(1, 1);
-      const noise2 = map.simpleNoise(5, 5);
-      
-      expect(noise1).toBeGreaterThanOrEqual(0);
-      expect(noise1).toBeLessThan(1);
-      expect(noise2).toBeGreaterThanOrEqual(0);
-      expect(noise2).toBeLessThan(1);
-    });
-
-    test('相同的输入应该产生相同的输出', () => {
-      const noise1 = map.simpleNoise(3, 3);
-      const noise2 = map.simpleNoise(3, 3);
-      
-      expect(noise1).toBe(noise2);
-    });
-
-    test('不同的输入应该产生不同的输出（大概率）', () => {
-      const noise1 = map.simpleNoise(1, 1);
-      const noise2 = map.simpleNoise(2, 2);
-      
-      // 不是绝对相等，但大概率不同
-      expect(noise1 === noise2).toBe(false);
+    test.skip('噪声功能已移除（使用固定地图）', () => {
+      // 新版使用固定地图，不再使用噪声生成
+      expect(true).toBe(true);
     });
   });
 });
