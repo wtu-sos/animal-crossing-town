@@ -672,6 +672,11 @@ class GameplaySystem {
                 continue;
             }
 
+            // 绘制NPC移动路径（调试用）
+            if (agent && agent.currentAction) {
+                this.drawNPCPath(ctx, camera, npc, agent);
+            }
+
             const bobOffset = Math.sin(npc.animationFrame * Math.PI / 2) * 2;
             const config = NPC_ROLES[npc.name] || { icon: '👤' };
 
@@ -717,6 +722,43 @@ class GameplaySystem {
             ctx.fillRect(screenX - barWidth/2, screenY + 12 + bobOffset, barWidth, barHeight);
             ctx.fillStyle = energy > 50 ? '#4CAF50' : energy > 25 ? '#FFC107' : '#F44336';
             ctx.fillRect(screenX - barWidth/2, screenY + 12 + bobOffset, barWidth * (energy/100), barHeight);
+        }
+    }
+
+    // 绘制NPC移动路径（调试用）
+    drawNPCPath(ctx, camera, npc, agent) {
+        if (!agent.currentAction) return;
+
+        const actionName = agent.currentAction.name;
+        let targetPos = null;
+
+        if (actionName === 'MoveHome') {
+            targetPos = getBuildingPosition(this.game.map, npc.homeBuilding);
+        } else if (actionName === 'MoveToWork') {
+            targetPos = getBuildingPosition(this.game.map, npc.workBuilding);
+        }
+
+        if (targetPos) {
+            const startX = npc.x - camera.x;
+            const startY = npc.y - camera.y;
+            const endX = targetPos.x - camera.x;
+            const endY = targetPos.y - camera.y;
+
+            // 绘制虚线路径
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 绘制目标标记
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(endX, endY, 8, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 }

@@ -427,27 +427,26 @@ class GOAPAgent {
         // 更新世界状态
         this.updateWorldState(gameplay);
         
-        // 定期重新规划
-        if (this.planTimer >= this.replanInterval || this.currentPlan.length === 0) {
+        // 定期重新规划（如果没有当前行动或计划为空）
+        if (this.planTimer >= this.replanInterval) {
             this.planTimer = 0;
-            this.selectGoal();
-            this.makePlan();
+            // 只有在没有正在执行的移动时才重新规划
+            if (!this.currentAction || this.currentAction.isDone()) {
+                this.selectGoal();
+                this.makePlan();
+            }
         }
         
-        // 执行当前行动
-        if (this.currentAction) {
-            const finished = this.currentAction.perform(this.npc, this.worldState, deltaTime);
-            if (finished) {
-                this.currentAction.applyEffects(this.worldState);
-                this.currentAction = null;
-            }
-        } else if (this.currentPlan.length > 0) {
+        // 如果当前行动完成，获取下一个
+        if ((!this.currentAction || this.currentAction.isDone()) && this.currentPlan.length > 0) {
             this.currentAction = this.currentPlan.shift();
-            this.currentAction.reset();
+            if (this.currentAction) {
+                this.currentAction.reset();
+            }
         }
         
         // 根据行动更新NPC移动
-        this.updateMovement();
+        this.updateMovement(gameplay);
     }
     
     // 更新世界状态
@@ -512,7 +511,7 @@ class GOAPAgent {
     }
     
     // 更新NPC移动
-    updateMovement() {
+    updateMovement(gameplay) {
         if (!this.currentAction) {
             this.npc.vx = 0;
             this.npc.vy = 0;
@@ -520,20 +519,35 @@ class GOAPAgent {
             return;
         }
         
-        // 根据行动类型决定移动
-        if (this.currentAction.name === 'Rest') {
+        // 执行当前行动的移动逻辑
+        const finished = this.currentAction.perform(this.npc, this.worldState, 16, gameplay);
+        
+        // 检查是否完成
+        if (finished) {
+            this.currentAction.applyEffects(this.worldState);
+            this.currentAction.reset();
+            this.currentAction = null;
+        }
+        
+        // 根据行动类型处理状态
+        if (this.currentAction && this.currentAction.name === 'Rest') {
             this.npc.vx = 0;
             this.npc.vy = 0;
             this.npc.isMoving = false;
             // 恢复能量
-            this.npc.energy = Math.min(100, (this.npc.energy || 100) + 0.1);
-        } else if (this.currentAction.name === 'Fish') {
+            this.npc.energy = Math.min(100, (this.npc.energy || 100) + 0.5);
+        } else if (this.currentAction && this.currentAction.name === 'Fish') {
             // 钓鱼时静止
             this.npc.vx = 0;
             this.npc.vy = 0;
             this.npc.isMoving = false;
+            this.npc.energy = Math.max(0, (this.npc.energy || 100) - 0.1);
         } else {
-            this.npc.isMoving = true;
+            // 其他行动（移动）消耗能量
+            this.npc.isMoving = (this.npc.vx !== 0 || this.npc.vy !== 0);
+            if (this.npc.isMoving) {
+                this.npc.energy = Math.max(0, (this.npc.energy || 100) - 0.05);
+            }
         }
         
         // 更新朝向
@@ -592,9 +606,9 @@ function getBuildingPosition(map, buildingKey) {
 // NPC状态显示
 function getNPCStatus(npc, agent) {
     if (!agent || !agent.currentAction) return '💤 空闲';
-    
+
     const actionName = agent.currentAction.name;
-    
+
     if (actionName === 'Rest') return '😴 休息中';
     if (actionName === 'Fish') return '🎣 钓鱼中';
     if (actionName === 'PlantFlower') return '🌱 种花中';
@@ -603,6 +617,24 @@ function getNPCStatus(npc, agent) {
     if (actionName === 'Eat') return '🍎 进食中';
     if (actionName.startsWith('MoveTo')) return '🚶 移动中';
     if (actionName === 'InteractWithPlayer') return '💬 对话中';
-    
+
     return '🎯 工作中';
+}
+
+// 模块导出（用于测试）
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        WorldState,
+        GOAPAction,
+        GOAPPlanner,
+        GOAPAgent,
+        MoveHomeAction,
+        MoveToWorkAction,
+        RestAction,
+        EatAction,
+        FishAction,
+        getBuildingPosition,
+        getNPCStatus,
+        NPC_ROLES
+    };
 }
