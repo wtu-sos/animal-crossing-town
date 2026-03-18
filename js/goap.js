@@ -117,8 +117,13 @@ class GOAPPlanner {
         
         const leaves = [];
         const open = [root];
+        const visitedStates = new Set();
+        let iterations = 0;
+        const MAX_ITERATIONS = 1000; // 最大迭代次数
         
-        while (open.length > 0) {
+        while (open.length > 0 && iterations < MAX_ITERATIONS) {
+            iterations++;
+            
             // 找最低成本节点
             open.sort((a, b) => a.cost - b.cost);
             const current = open.shift();
@@ -126,8 +131,15 @@ class GOAPPlanner {
             // 检查是否满足目标
             if (this.goalMet(current.state, goal)) {
                 leaves.push(current);
+                break; // 找到一个解就退出
+            }
+            
+            // 状态去重
+            const stateKey = this.stateToKey(current.state);
+            if (visitedStates.has(stateKey)) {
                 continue;
             }
+            visitedStates.add(stateKey);
             
             // 扩展节点
             for (const action of usableActions) {
@@ -152,6 +164,12 @@ class GOAPPlanner {
         
         leaves.sort((a, b) => a.cost - b.cost);
         return this.buildPlan(leaves[0]);
+    }
+    
+    // 将状态转换为字符串键（用于去重）
+    stateToKey(state) {
+        const keys = Object.keys(state).sort();
+        return keys.map(k => `${k}:${state[k]}`).join(',');
     }
     
     // 检查目标是否满足
