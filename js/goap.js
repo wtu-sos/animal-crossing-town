@@ -99,6 +99,11 @@ class GOAPAction {
 class GOAPPlanner {
     // A*算法找最优行动序列
     plan(agent, availableActions, worldState, goal) {
+        const startTime = Date.now();
+        const MAX_TIME = 30; // 最大30ms
+        const MAX_ITERATIONS = 50; // 最大迭代次数
+        const MAX_OPEN_SIZE = 200; // 最大队列大小
+        
         // 重置所有行动
         availableActions.forEach(a => a.reset());
         
@@ -119,10 +124,20 @@ class GOAPPlanner {
         const open = [root];
         const visitedStates = new Set();
         let iterations = 0;
-        const MAX_ITERATIONS = 1000; // 最大迭代次数
         
         while (open.length > 0 && iterations < MAX_ITERATIONS) {
             iterations++;
+            
+            // 检查超时
+            if (Date.now() - startTime > MAX_TIME) {
+                console.warn(`[GOAP] Planning timeout for goal`, goal);
+                break;
+            }
+            
+            // 限制队列大小
+            if (open.length > MAX_OPEN_SIZE) {
+                open.length = MAX_OPEN_SIZE;
+            }
             
             // 找最低成本节点
             open.sort((a, b) => a.cost - b.cost);
@@ -134,12 +149,18 @@ class GOAPPlanner {
                 break; // 找到一个解就退出
             }
             
-            // 状态去重
-            const stateKey = this.stateToKey(current.state);
+            // 状态去重 - 简化版，只检查关键状态
+            const stateKey = this.stateToKey(current.state, goal);
             if (visitedStates.has(stateKey)) {
                 continue;
             }
             visitedStates.add(stateKey);
+            
+            // 限制访问状态数量
+            if (visitedStates.size > 500) {
+                console.warn(`[GOAP] Too many states visited`);
+                break;
+            }
             
             // 扩展节点
             for (const action of usableActions) {
@@ -160,15 +181,20 @@ class GOAPPlanner {
         }
         
         // 找到最优路径
-        if (leaves.length === 0) return null;
+        if (leaves.length === 0) {
+            console.warn(`[GOAP] No plan found after ${iterations} iterations`);
+            return null;
+        }
         
         leaves.sort((a, b) => a.cost - b.cost);
         return this.buildPlan(leaves[0]);
     }
     
-    // 将状态转换为字符串键（用于去重）
-    stateToKey(state) {
-        const keys = Object.keys(state).sort();
+    // 将状态转换为字符串键（用于去重）- 只包含与目标相关的状态
+    stateToKey(state, goal) {
+        const goalKeys = Object.keys(goal);
+        const relevantKeys = ['time', 'atHome', 'atWork', 'energy', ...goalKeys];
+        const keys = [...new Set(relevantKeys)].sort();
         return keys.map(k => `${k}:${state[k]}`).join(',');
     }
     
@@ -507,8 +533,13 @@ class GOAPAgent {
         console.log(`[${this.npc.name}] Initializing GOAP Agent at time ${gameTime}`);
         this.selectGoal(gameTime);
         console.log(`[${this.npc.name}] Selected goal:`, this.currentGoal);
+        
+        // 添加超时保护
+        const planStartTime = Date.now();
         this.makePlan();
-        console.log(`[${this.npc.name}] Generated plan with ${this.currentPlan.length} actions`);
+        const planDuration = Date.now() - planStartTime;
+        console.log(`[${this.npc.name}] Generated plan with ${this.currentPlan.length} actions in ${planDuration}ms`);
+        
         // 立即开始第一个行动
         if (this.currentPlan.length > 0) {
             this.currentAction = this.currentPlan.shift();
@@ -517,7 +548,10 @@ class GOAPAgent {
                 console.log(`[${this.npc.name}] Starting first action:`, this.currentAction.name);
             }
         } else {
-            console.warn(`[${this.npc.name}] No plan generated!`);
+            console.warn(`[${this.npc.name}] No plan generated! Using fallback.`);
+            // 使用默认行动作为备用
+            this.currentAction = new MoveHomeAction();
+            this.currentAction.reset();
         }
     }
 
