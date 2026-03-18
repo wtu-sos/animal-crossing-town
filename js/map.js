@@ -4,8 +4,8 @@
 class GameMap {
     constructor(tileSize = 32) {
         this.tileSize = tileSize;
-        this.width = 60;  // 地图宽度（瓦片数）
-        this.height = 60; // 地图高度（瓦片数）
+        this.width = 80;  // 地图宽度（瓦片数）- 扩大
+        this.height = 80; // 地图高度（瓦片数）- 扩大
         this.pixelWidth = this.width * tileSize;
         this.pixelHeight = this.height * tileSize;
         
@@ -25,27 +25,43 @@ class GameMap {
             BRIDGE: 11     // 桥
         };
         
-        // 建筑定义
+        // 建筑定义 - 扩大地图后重新布局
         this.BUILDINGS = {
-            playerHouse: { x: 5, y: 5, w: 4, h: 4, type: 'house', name: '玩家家', color: '#FFB6C1' },
-            npc1House: { x: 10, y: 5, w: 4, h: 4, type: 'house', name: '阿狸家', color: '#FF6B6B', owner: '阿狸' },
-            npc2House: { x: 15, y: 5, w: 4, h: 4, type: 'house', name: '小橘家', color: '#4ECDC4', owner: '小橘' },
-            npc3House: { x: 20, y: 5, w: 4, h: 4, type: 'house', name: '小白家', color: '#FFE66D', owner: '小白' },
+            // 北边的住宅区
+            playerHouse: { x: 8, y: 5, w: 4, h: 4, type: 'house', name: '玩家家', color: '#FFB6C1' },
+            npc1House: { x: 15, y: 5, w: 4, h: 4, type: 'house', name: '阿狸家', color: '#FF6B6B', owner: '阿狸' },
+            npc2House: { x: 22, y: 5, w: 4, h: 4, type: 'house', name: '小橘家', color: '#4ECDC4', owner: '小橘' },
+            npc3House: { x: 29, y: 5, w: 4, h: 4, type: 'house', name: '小白家', color: '#FFE66D', owner: '小白' },
             
-            flowerShop: { x: 30, y: 8, w: 5, h: 4, type: 'shop', name: '🌸花店', color: '#FF69B4', shopType: 'flower' },
-            fishShop: { x: 38, y: 8, w: 5, h: 4, type: 'shop', name: '🎣渔具店', color: '#4682B4', shopType: 'fishing' },
-            toolShop: { x: 46, y: 8, w: 5, h: 4, type: 'shop', name: '⛏️工具店', color: '#8B4513', shopType: 'tools' },
+            // 东边的商业区
+            flowerShop: { x: 45, y: 8, w: 5, h: 4, type: 'shop', name: '🌸花店', color: '#FF69B4', shopType: 'flower' },
+            fishShop: { x: 52, y: 8, w: 5, h: 4, type: 'shop', name: '🎣渔具店', color: '#4682B4', shopType: 'fishing' },
+            toolShop: { x: 59, y: 8, w: 5, h: 4, type: 'shop', name: '⛏️工具店', color: '#8B4513', shopType: 'tools' },
+            giftShop: { x: 66, y: 8, w: 5, h: 4, type: 'shop', name: '🎁礼品店', color: '#FF69B4', shopType: 'gifts' },
             
-            inn: { x: 30, y: 20, w: 6, h: 5, type: 'inn', name: '🏨温泉旅馆', color: '#DDA0DD' },
-            cafe: { x: 40, y: 20, w: 5, h: 4, type: 'shop', name: '☕咖啡馆', color: '#8B4513', shopType: 'cafe' },
-            restaurant: { x: 20, y: 20, w: 6, h: 5, type: 'shop', name: '🍜大饭店', color: '#FF6347', shopType: 'restaurant' },
+            // 中央的餐饮住宿区
+            restaurant: { x: 25, y: 20, w: 6, h: 5, type: 'shop', name: '🍜大饭店', color: '#FF6347', shopType: 'restaurant' },
+            inn: { x: 38, y: 18, w: 6, h: 5, type: 'inn', name: '🏨温泉旅馆', color: '#DDA0DD' },
+            cafe: { x: 50, y: 20, w: 5, h: 4, type: 'shop', name: '☕咖啡馆', color: '#8B4513', shopType: 'cafe' },
+            bakery: { x: 15, y: 20, w: 5, h: 4, type: 'shop', name: '🥐面包店', color: '#F4A460', shopType: 'bakery' },
             
-            townHall: { x: 25, y: 30, w: 8, h: 6, type: 'townhall', name: '🏛️市政厅', color: '#DAA520' },
-            museum: { x: 40, y: 30, w: 6, h: 5, type: 'shop', name: '🏛️博物馆', color: '#708090', shopType: 'museum' },
+            // 西南的行政区
+            townHall: { x: 8, y: 35, w: 8, h: 6, type: 'townhall', name: '🏛️市政厅', color: '#DAA520' },
+            museum: { x: 20, y: 35, w: 6, h: 5, type: 'shop', name: '🏛️博物馆', color: '#708090', shopType: 'museum' },
+            library: { x: 30, y: 35, w: 6, h: 5, type: 'shop', name: '📚图书馆', color: '#8B7355', shopType: 'library' },
+            bank: { x: 42, y: 35, w: 5, h: 4, type: 'shop', name: '🏦银行', color: '#FFD700', shopType: 'bank' },
             
-            park: { x: 10, y: 25, w: 10, h: 10, type: 'park', name: '🌳中央公园', color: '#228B22' },
+            // 西北的公园和休闲区
+            park: { x: 8, y: 50, w: 12, h: 12, type: 'park', name: '🌳中央公园', color: '#228B22' },
+            playground: { x: 25, y: 52, w: 8, h: 8, type: 'park', name: '🎪游乐场', color: '#FF69B4' },
             
-            dock: { x: 52, y: 25, w: 6, h: 8, type: 'dock', name: '⚓码头', color: '#8B4513' }
+            // 东南的水域和码头
+            dock: { x: 65, y: 30, w: 8, h: 10, type: 'dock', name: '⚓码头', color: '#8B4513' },
+            fishMarket: { x: 65, y: 45, w: 6, h: 4, type: 'shop', name: '🐟鱼市', color: '#4682B4', shopType: 'market' },
+            
+            // 东北的工业区
+            workshop: { x: 60, y: 55, w: 6, h: 5, type: 'shop', name: '🔧工坊', color: '#696969', shopType: 'workshop' },
+            warehouse: { x: 68, y: 55, w: 7, h: 5, type: 'shop', name: '📦仓库', color: '#A9A9A9', shopType: 'warehouse' }
         };
         
         // 地图数据
@@ -85,10 +101,10 @@ class GameMap {
         this.createInteractiveObjects();
     }
     
-    // 绘制道路系统
+    // 绘制道路系统 - 扩大版
     drawRoadSystem() {
-        // 主要道路（横向）
-        const mainRoadY = [12, 28, 45];
+        // 主要道路（横向）- 5条主干道
+        const mainRoadY = [12, 28, 42, 58, 72];
         for (const y of mainRoadY) {
             for (let x = 0; x < this.width; x++) {
                 this.tiles[y][x] = this.TILE_TYPES.ROAD;
@@ -98,8 +114,8 @@ class GameMap {
             }
         }
         
-        // 主要道路（纵向）
-        const mainRoadX = [8, 25, 42, 55];
+        // 主要道路（纵向）- 6条主干道
+        const mainRoadX = [6, 18, 32, 46, 60, 74];
         for (const x of mainRoadX) {
             for (let y = 0; y < this.height; y++) {
                 this.tiles[y][x] = this.TILE_TYPES.ROAD;
@@ -114,6 +130,16 @@ class GameMap {
             for (const rx of mainRoadX) {
                 this.tiles[ry][rx] = this.TILE_TYPES.ROAD;
             }
+        }
+        
+        // 添加环路（外围道路）
+        for (let x = 2; x < this.width - 2; x++) {
+            this.tiles[2][x] = this.TILE_TYPES.ROAD;
+            this.tiles[this.height - 3][x] = this.TILE_TYPES.ROAD;
+        }
+        for (let y = 2; y < this.height - 2; y++) {
+            this.tiles[y][2] = this.TILE_TYPES.ROAD;
+            this.tiles[y][this.width - 3] = this.TILE_TYPES.ROAD;
         }
     }
     
@@ -170,13 +196,13 @@ class GameMap {
         }
     }
     
-    // 绘制水域和沙滩
+    // 绘制水域和沙滩 - 扩大版
     drawWaterAndBeach() {
-        // 右下角湖泊
-        for (let y = 40; y < this.height; y++) {
-            for (let x = 50; x < this.width; x++) {
+        // 右下角大型湖泊
+        for (let y = 55; y < this.height - 2; y++) {
+            for (let x = 65; x < this.width - 2; x++) {
                 // 湖边沙滩
-                if (y === 40 || x === 50 || y === this.height - 1 || x === this.width - 1) {
+                if (y === 55 || x === 65 || y === this.height - 3 || x === this.width - 3) {
                     this.tiles[y][x] = this.TILE_TYPES.SAND;
                 } else {
                     this.tiles[y][x] = this.TILE_TYPES.WATER;
@@ -184,9 +210,20 @@ class GameMap {
             }
         }
         
-        // 添加桥
-        for (let x = 50; x < 56; x++) {
-            this.tiles[28][x] = this.TILE_TYPES.BRIDGE;
+        // 西北角小湖泊
+        for (let y = 65; y < 78; y++) {
+            for (let x = 5; x < 18; x++) {
+                if (y === 65 || x === 5 || y === 77 || x === 17) {
+                    this.tiles[y][x] = this.TILE_TYPES.SAND;
+                } else {
+                    this.tiles[y][x] = this.TILE_TYPES.WATER;
+                }
+            }
+        }
+        
+        // 添加桥（连接两岸）
+        for (let x = 65; x < 72; x++) {
+            this.tiles[42][x] = this.TILE_TYPES.BRIDGE;
         }
     }
     

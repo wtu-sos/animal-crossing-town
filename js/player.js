@@ -26,9 +26,13 @@ class Player {
         // 能量系统
         this.energy = 100;
         this.maxEnergy = 100;
-        this.energyDecayRate = 0.03; // 移动时能量消耗
+        this.energyDecayRate = 0.02; // 降低基础消耗率
         this.isEating = false;
         this.eatTimer = 0;
+        
+        // 能量消耗记录（用于调试）
+        this.energyLog = [];
+        this.lastEnergyUpdate = Date.now();
         
         this.debugLog = '';
     }
@@ -50,10 +54,20 @@ class Player {
             return;
         }
         
-        // 能量不足时减速
+        // 计算实际移动速度（考虑能量状态）
         let currentSpeed = this.speed;
-        if (this.energy < 20) {
-            currentSpeed = this.speed * 0.5; // 能量低时速度减半
+        let consumptionRate = this.energyDecayRate;
+        
+        // 能量状态影响
+        if (this.energy < 10) {
+            currentSpeed = this.speed * 0.3; // 极低能量时速度大幅降低
+            consumptionRate = this.energyDecayRate * 0.5; // 但消耗也降低（疲惫）
+        } else if (this.energy < 30) {
+            currentSpeed = this.speed * 0.6;
+            consumptionRate = this.energyDecayRate * 0.8;
+        } else if (this.energy > 80) {
+            currentSpeed = this.speed * 1.1; // 能量充足时稍微加速
+            consumptionRate = this.energyDecayRate * 1.2;
         }
         
         // 计算新位置
@@ -63,7 +77,7 @@ class Player {
         let newY = this.y + moveY;
         
         // 记录调试信息
-        this.debugLog = `move: ${moveX.toFixed(1)}, ${moveY.toFixed(1)} | energy: ${Math.floor(this.energy)}`;
+        this.debugLog = `move: ${moveX.toFixed(1)}, ${moveY.toFixed(1)} | energy: ${Math.floor(this.energy)} | rate: ${consumptionRate.toFixed(3)}`;
         
         // 边界限制
         newX = Math.max(0, Math.min(newX, map.pixelWidth - this.width));
@@ -101,9 +115,27 @@ class Player {
             this.animationTimer = 0;
         }
         
-        // 移动消耗能量
+        // 移动消耗能量（根据实际移动距离计算）
         if (this.isMoving) {
-            this.energy = Math.max(0, this.energy - this.energyDecayRate);
+            const distance = Math.sqrt(moveX * moveX + moveY * moveY);
+            const actualConsumption = consumptionRate * (distance / currentSpeed);
+            this.energy = Math.max(0, this.energy - actualConsumption);
+            
+            // 记录能量日志（每5秒记录一次）
+            const now = Date.now();
+            if (now - this.lastEnergyUpdate > 5000) {
+                this.energyLog.push({
+                    time: now,
+                    energy: this.energy,
+                    action: 'move',
+                    consumption: actualConsumption
+                });
+                // 只保留最近20条记录
+                if (this.energyLog.length > 20) {
+                    this.energyLog.shift();
+                }
+                this.lastEnergyUpdate = now;
+            }
         }
     }
     
@@ -234,6 +266,31 @@ class Player {
     // 获取能量百分比
     getEnergyPercent() {
         return (this.energy / this.maxEnergy) * 100;
+    }
+    
+    // 获取能量消耗统计
+    getEnergyStats() {
+        const totalConsumed = this.energyLog.reduce((sum, log) => sum + log.consumption, 0);
+        const avgConsumption = this.energyLog.length > 0 ? totalConsumed / this.energyLog.length : 0;
+        
+        return {
+            current: this.energy,
+            max: this.maxEnergy,
+            percent: this.getEnergyPercent(),
+            recentLogs: this.energyLog.slice(-5),
+            totalConsumed: totalConsumed.toFixed(2),
+            avgConsumption: avgConsumption.toFixed(3)
+        };
+    }
+    
+    // 获取当前能量状态描述
+    getEnergyStatus() {
+        const percent = this.getEnergyPercent();
+        if (percent >= 80) return { text: '精力充沛', color: '#4CAF50' };
+        if (percent >= 50) return { text: '状态良好', color: '#8BC34A' };
+        if (percent >= 30) return { text: '略有疲惫', color: '#FFC107' };
+        if (percent >= 10) return { text: '需要休息', color: '#FF9800' };
+        return { text: '极度疲劳', color: '#F44336' };
     }
     
     getBobOffset() {

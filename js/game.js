@@ -34,6 +34,9 @@ class Game {
         // 定期更新NPC（GOAP驱动）
         this.lastNPCUpdate = 0;
         
+        // 迷你地图
+        this.minimapVisible = false;
+        
         // 初始化
         this.init();
         
@@ -132,6 +135,78 @@ class Game {
         if (this.debug) {
             this.drawDebugInfo();
         }
+        
+        // 更新迷你地图
+        if (this.minimapVisible) {
+            this.drawMiniMap();
+        }
+    }
+    
+    // 绘制迷你地图
+    drawMiniMap() {
+        const canvas = document.getElementById('minimap');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const mapWidth = this.map.width;
+        const mapHeight = this.map.height;
+        
+        // 设置迷你地图大小
+        const scale = 4; // 每个瓦片4像素
+        canvas.width = mapWidth * scale;
+        canvas.height = mapHeight * scale;
+        
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 绘制地图
+        for (let y = 0; y < mapHeight; y++) {
+            for (let x = 0; x < mapWidth; x++) {
+                const tile = this.map.getTile(x, y);
+                
+                // 根据瓦片类型设置颜色
+                switch(tile) {
+                    case 0: ctx.fillStyle = '#7CB342'; break; // grass
+                    case 1: ctx.fillStyle = '#757575'; break; // road
+                    case 2: ctx.fillStyle = '#BDBDBD'; break; // sidewalk
+                    case 3: ctx.fillStyle = '#42A5F5'; break; // water
+                    case 4: ctx.fillStyle = '#FFE082'; break; // sand
+                    case 5: ctx.fillStyle = '#FFB6C1'; break; // house
+                    case 6: ctx.fillStyle = '#81C784'; break; // shop
+                    case 7: ctx.fillStyle = '#CE93D8'; break; // inn
+                    case 8: ctx.fillStyle = '#FFD54F'; break; // townhall
+                    case 9: ctx.fillStyle = '#66BB6A'; break; // park
+                    case 10: ctx.fillStyle = '#8D6E63'; break; // fence
+                    case 11: ctx.fillStyle = '#A1887F'; break; // bridge
+                    default: ctx.fillStyle = '#000';
+                }
+                
+                ctx.fillRect(x * scale, y * scale, scale, scale);
+            }
+        }
+        
+        // 绘制玩家位置
+        const playerX = Math.floor(this.player.x / this.map.tileSize);
+        const playerY = Math.floor(this.player.y / this.map.tileSize);
+        ctx.fillStyle = '#FF0000';
+        ctx.fillRect(playerX * scale, playerY * scale, scale * 2, scale * 2);
+        
+        // 绘制NPC位置
+        ctx.fillStyle = '#00FF00';
+        for (const npc of this.gameplay.npcs) {
+            const npcX = Math.floor(npc.x / this.map.tileSize);
+            const npcY = Math.floor(npc.y / this.map.tileSize);
+            ctx.fillRect(npcX * scale, npcY * scale, scale * 2, scale * 2);
+        }
+        
+        // 绘制相机视窗
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        const viewX = Math.floor(this.camera.x / this.map.tileSize) * scale;
+        const viewY = Math.floor(this.camera.y / this.map.tileSize) * scale;
+        const viewW = Math.floor(this.camera.width / this.map.tileSize) * scale;
+        const viewH = Math.floor(this.camera.height / this.map.tileSize) * scale;
+        ctx.strokeRect(viewX, viewY, viewW, viewH);
     }
     
     drawSky() {
@@ -203,6 +278,17 @@ class Game {
         for (const [key, value] of Object.entries(this.debugInfo)) {
             ctx.fillText(`${key}: ${value}`, 20, y);
             y += 18;
+        }
+    }
+}
+
+// 全局迷你地图切换函数
+function toggleMiniMap() {
+    if (window.game) {
+        window.game.minimapVisible = !window.game.minimapVisible;
+        const container = document.getElementById('minimap-container');
+        if (container) {
+            container.style.display = window.game.minimapVisible ? 'block' : 'none';
         }
     }
 }

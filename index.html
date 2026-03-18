@@ -22,6 +22,13 @@
             <div id="time-display">🌅 06:00</div>
             <div id="coords">X: 0, Y: 0</div>
             <div id="player-energy">⚡ 100%</div>
+            <button id="map-toggle" onclick="toggleMiniMap()">🗺️ 地图</button>
+        </div>
+        
+        <!-- 迷你地图 -->
+        <div id="minimap-container" style="display: none;">
+            <canvas id="minimap"></canvas>
+            <button id="close-map" onclick="toggleMiniMap()">✕</button>
         </div>
         
         <!-- 操作提示 -->
@@ -32,6 +39,7 @@
     </div>
     
     <!-- 游戏脚本 -->
+    <script src="js/EnergyManager.js"></script>
     <script src="js/input.js"></script>
     <script src="js/camera.js"></script>
     <script src="js/map.js"></script>
