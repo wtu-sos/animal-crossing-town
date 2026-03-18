@@ -37,11 +37,17 @@ class Game {
         // 迷你地图
         this.minimapVisible = false;
         
-        // 玩家 GOAP Agent
-        this.playerAgent = new PlayerGOAPAgent(this.player, this.gameState);
+        // 玩家 GOAP Agent - 使用gameplay的世界状态
+        this.playerAgent = null;
         
         // 初始化
         this.init();
+        
+        // 初始化玩家GOAP Agent（在gameplay初始化之后）
+        if (this.gameplay && this.gameplay.worldState) {
+            this.playerAgent = new PlayerGOAPAgent(this.player, this.gameplay);
+            console.log('Player GOAP Agent initialized');
+        }
         
         console.log('Game initialized');
         console.log('Player spawn:', this.player.x, this.player.y);
@@ -134,7 +140,7 @@ class Game {
         }
         
         this.renderer.drawPlayer(this.player, this.camera);
-        this.renderer.drawUI(this.gameTime, this.player.x, this.player.y, this.player);
+        this.renderer.drawUI(this.gameTime, this.player.x, this.player.y, this.player, this.playerAgent);
         
         // 绘制调试信息
         if (this.debug) {
@@ -297,6 +303,91 @@ function toggleMiniMap() {
         }
     }
 }
+
+// 全局任务面板切换函数
+function toggleTaskPanel() {
+    const panel = document.getElementById('task-panel');
+    if (panel) {
+        const isVisible = panel.style.display !== 'none';
+        panel.style.display = isVisible ? 'none' : 'block';
+        
+        // 如果显示面板，更新内容
+        if (!isVisible && window.game && window.game.playerAgent) {
+            updateTaskPanel();
+        }
+    }
+}
+
+// 更新任务面板内容
+function updateTaskPanel() {
+    if (!window.game || !window.game.playerAgent) return;
+    
+    const agent = window.game.playerAgent;
+    const status = agent.getCurrentStatus();
+    
+    // 更新当前任务显示
+    const taskIcon = document.querySelector('#current-task-display .task-icon');
+    const taskName = document.querySelector('#current-task-display .task-name');
+    const taskDesc = document.querySelector('#current-task-display .task-desc');
+    const progressFill = document.querySelector('#current-task-display .progress-fill');
+    
+    if (taskIcon) taskIcon.textContent = status.icon || '🤔';
+    if (taskName) taskName.textContent = status.goal ? status.goal.name : '思考中...';
+    if (taskDesc) taskDesc.textContent = status.action || '正在决定下一步行动';
+    if (progressFill) progressFill.style.width = (status.progress || 0) + '%';
+    
+    // 更新计划步骤
+    const planSteps = document.getElementById('plan-steps');
+    if (planSteps) {
+        const steps = agent.getPlanSteps();
+        if (steps.length === 0) {
+            planSteps.innerHTML = '<li>⏳ 等待计划生成...</li>';
+        } else {
+            planSteps.innerHTML = steps.map(step => 
+                `<li class="${step.status}">${step.icon} ${step.name}</li>`
+            ).join('');
+        }
+    }
+    
+    // 更新可用目标按钮
+    const goalsContainer = document.getElementById('available-goals');
+    if (goalsContainer) {
+        const goals = agent.getAvailableGoals();
+        const currentGoalId = agent.currentGoal ? agent.currentGoal.id : null;
+        
+        goalsContainer.innerHTML = goals.map(goal => `
+            <button class="goal-btn ${goal.id === currentGoalId ? 'active' : ''}" 
+                    onclick="setPlayerGoal('${goal.id}')">
+                <span class="icon">${goal.icon}</span>
+                <span class="name">${goal.name}</span>
+            </button>
+        `).join('');
+    }
+}
+
+// 设置玩家目标
+function setPlayerGoal(goalId) {
+    if (window.game && window.game.playerAgent) {
+        window.game.playerAgent.setManualGoal(goalId);
+        updateTaskPanel();
+    }
+}
+
+// 恢复自动模式
+function setAutoMode() {
+    if (window.game && window.game.playerAgent) {
+        window.game.playerAgent.setAutoMode();
+        updateTaskPanel();
+    }
+}
+
+// 定期更新任务面板（如果打开）
+setInterval(() => {
+    const panel = document.getElementById('task-panel');
+    if (panel && panel.style.display !== 'none' && window.game) {
+        updateTaskPanel();
+    }
+}, 500);
 
 window.addEventListener('load', () => {
     window.game = new Game();

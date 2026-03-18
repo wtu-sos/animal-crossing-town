@@ -497,11 +497,12 @@ class Renderer {
     }
     
     // 绘制 UI
-    drawUI(time, playerX, playerY, player) {
+    drawUI(time, playerX, playerY, player, playerAgent) {
         // 更新 DOM 元素
         const timeDisplay = document.getElementById('time-display');
         const coords = document.getElementById('coords');
         const energyDisplay = document.getElementById('player-energy');
+        const playerStatus = document.getElementById('player-status');
 
         if (timeDisplay) {
             const hours = Math.floor(time / 60);
@@ -516,7 +517,7 @@ class Renderer {
 
         // 更新玩家能量显示
         if (energyDisplay && player) {
-            const energyPercent = Math.floor(player.getEnergyPercent());
+            const energyPercent = Math.floor(player.getEnergyPercent ? player.getEnergyPercent() : 100);
             energyDisplay.textContent = `⚡ ${energyPercent}%`;
 
             // 能量低时添加警告样式
@@ -529,6 +530,15 @@ class Renderer {
             } else {
                 energyDisplay.classList.remove('low');
                 energyDisplay.style.color = '#4CAF50';
+            }
+        }
+
+        // 更新玩家状态显示
+        if (playerStatus && playerAgent) {
+            const status = playerAgent.getCurrentStatus();
+            if (status) {
+                playerStatus.textContent = status.text || '🤔 思考中...';
+                playerStatus.style.display = 'block';
             }
         }
     }

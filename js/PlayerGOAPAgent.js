@@ -95,8 +95,11 @@ class PlayerGOAPAgent {
             }
         }
         
-        // 时间相关的目标
-        const hours = this.gameState.getHours();
+        // 从gameState获取时间（game是Game实例）
+        let hours = 12; // 默认中午
+        if (this.gameState && this.gameState.gameTime) {
+            hours = Math.floor(this.gameState.gameTime / 60) % 24;
+        }
         
         // 餐时优先吃饭
         if ((hours === 8 || hours === 12 || hours === 18) && this.player.energy < 70) {
@@ -238,6 +241,7 @@ class PlayerGOAPAgent {
     executeMove(action, map) {
         const targetPos = map.getBuildingPosition(action.target);
         if (!targetPos) {
+            console.warn('Target not found:', action.target);
             this.currentAction = null;
             return;
         }
@@ -250,7 +254,9 @@ class PlayerGOAPAgent {
             // 到达目标
             this.player.vx = 0;
             this.player.vy = 0;
+            this.player.isMoving = false;
             this.currentAction = null;
+            console.log('Player arrived at:', action.target);
             return;
         }
         
@@ -273,10 +279,20 @@ class PlayerGOAPAgent {
             this.player.direction = this.player.vy > 0 ? 'down' : 'up';
         }
         
-        this.player.animationFrame++;
+        // 更新动画帧
+        if (!this.player.animationTimer) this.player.animationTimer = 0;
+        this.player.animationTimer++;
+        if (this.player.animationTimer > 6) {
+            this.player.animationFrame = (this.player.animationFrame + 1) % 4;
+            this.player.animationTimer = 0;
+        }
         
         // 消耗能量
-        this.player.consumeEnergy(0.02);
+        if (typeof this.player.consumeEnergy === 'function') {
+            this.player.consumeEnergy(0.02);
+        } else {
+            this.player.energy = Math.max(0, this.player.energy - 0.02);
+        }
     }
     
     // 执行定时动作
