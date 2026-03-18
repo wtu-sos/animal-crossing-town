@@ -123,7 +123,6 @@ class Game {
                 playerX: this.player.x.toFixed(1),
                 playerY: this.player.y.toFixed(1),
                 isMoving: movement.x !== 0 || movement.y !== 0,
-                joystickActive: this.input.joystick.active,
                 log: this.player.debugLog
             };
         }
