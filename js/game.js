@@ -15,31 +15,13 @@ class Game {
         this.camera = new Camera(window.innerWidth, window.innerHeight);
         this.map = new GameMap(32);
         
-        // 找到安全的出生位置（从地图中心开始搜索）
-        let spawnX = this.map.pixelWidth / 2;
-        let spawnY = this.map.pixelHeight / 2;
+        // 玩家从自己家出生
+        const playerHomePos = this.map.getBuildingPosition('playerHouse');
+        let spawnX = playerHomePos.x;
+        let spawnY = playerHomePos.y;
         
-        // 搜索安全出生点（确保周围也有空间移动）
-        let foundSafeSpot = false;
-        for (let radius = 0; radius < 20 && !foundSafeSpot; radius++) {
-            for (let angle = 0; angle < Math.PI * 2 && !foundSafeSpot; angle += Math.PI / 8) {
-                const testX = spawnX + Math.cos(angle) * radius * 32;
-                const testY = spawnY + Math.sin(angle) * radius * 32;
-                
-                // 检查当前位置和周围是否有足够空间
-                const hasSpace = !this.map.checkCollision(testX, testY, 24, 24) &&
-                               !this.map.checkCollision(testX + 30, testY, 24, 24) &&
-                               !this.map.checkCollision(testX - 30, testY, 24, 24) &&
-                               !this.map.checkCollision(testX, testY + 30, 24, 24) &&
-                               !this.map.checkCollision(testX, testY - 30, 24, 24);
-                
-                if (hasSpace) {
-                    spawnX = testX;
-                    spawnY = testY;
-                    foundSafeSpot = true;
-                }
-            }
-        }
+        // 在门口生成（稍微向下偏移）
+        spawnY += 40;
         
         this.player = new Player(spawnX, spawnY);
         

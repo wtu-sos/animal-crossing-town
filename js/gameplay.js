@@ -45,40 +45,11 @@ class GameplaySystem {
         for (let i = 0; i < 3; i++) {
             const name = names[i];
             const config = NPC_ROLES[name];
-            let x, y;
-            let safe = false;
-            let attempts = 0;
             
-            // 从家中开始
-            x = config.homePos.x;
-            y = config.homePos.y;
-            
-            while (!safe && attempts < 100) {
-                // 检查不与地图碰撞
-                if (!this.game.map.checkCollision(x, y, 24, 24)) {
-                    // 检查不与其他NPC重叠
-                    let overlap = false;
-                    for (const npc of npcs) {
-                        const dx = x - npc.x;
-                        const dy = y - npc.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < 50) {
-                            overlap = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!overlap) {
-                        safe = true;
-                    }
-                }
-                
-                if (!safe) {
-                    x = Math.random() * this.game.map.pixelWidth;
-                    y = Math.random() * this.game.map.pixelHeight;
-                }
-                attempts++;
-            }
+            // 从家中开始（使用地图建筑位置）
+            const homePos = getBuildingPosition(this.game.map, config.homeBuilding);
+            const x = homePos.x;
+            const y = homePos.y;
             
             npcs.push({
                 x: x,
@@ -89,26 +60,21 @@ class GameplaySystem {
                 height: 24,
                 name: name,
                 role: config.role,
-                homePos: config.homePos,
-                workPos: config.workPos,
+                homeBuilding: config.homeBuilding,
+                workBuilding: config.workBuilding,
                 color: config.color,
+                icon: config.icon,
                 dialogues: config.dialogues,
                 currentDialogue: 0,
                 direction: 'down',
                 animationFrame: 0,
                 moveTimer: 0,
-                moveInterval: 100 + Math.random() * 200,
                 isMoving: false,
                 energy: 100, // GOAP能量系统
                 hasTool: true // 职业工具
             });
         }
         return npcs;
-    }
-    
-    // 获取NPC配置
-    getNPCConfig(name) {
-        return NPC_ROLES[name] || NPC_ROLES['阿狸'];
     }
     
     // NPC对话

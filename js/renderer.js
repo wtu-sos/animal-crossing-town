@@ -9,19 +9,24 @@ class Renderer {
         // 禁用平滑缩放以保持像素风格
         this.ctx.imageSmoothingEnabled = false;
         
-        // 颜色调色板
+        // 颜色调色板 - 大富翁小镇风格
         this.colors = {
-            [0]: '#7CBA3D',  // GRASS - 浅绿
-            [1]: '#6BA832',  // GRASS_DARK - 深绿
-            [2]: '#8B7355',  // DIRT - 土色
-            [3]: '#4A90D9',  // WATER - 水蓝
-            [4]: '#E6D5A7',  // SAND - 沙色
-            [5]: '#808080',  // STONE - 灰色
-            [6]: '#A0522D',  // WOOD - 棕色
-            [7]: '#FF69B4',  // FLOWER - 粉色
-            [8]: '#228B22',  // TREE - 森林绿
-            [9]: '#696969'   // ROCK - 岩石灰
+            [0]: '#7CB342',  // GRASS - 草地绿
+            [1]: '#757575',  // ROAD - 道路灰
+            [2]: '#BDBDBD',  // ROAD_SIDEWALK - 人行道浅灰
+            [3]: '#42A5F5',  // WATER - 湖水蓝
+            [4]: '#FFE082',  // SAND - 沙滩黄
+            [5]: '#FFB6C1',  // BUILDING_HOUSE - 住宅粉色
+            [6]: '#81C784',  // BUILDING_SHOP - 商店绿
+            [7]: '#CE93D8',  // BUILDING_INN - 旅馆紫
+            [8]: '#FFD54F',  // BUILDING_TOWNHALL - 市政厅金
+            [9]: '#66BB6A',  // PARK - 公园深绿
+            [10]: '#8D6E63', // FENCE - 围栏棕
+            [11]: '#A1887F'  // BRIDGE - 桥木色
         };
+        
+        // 建筑颜色映射
+        this.buildingColors = {};
     }
     
     // 调整画布大小
@@ -53,44 +58,208 @@ class Renderer {
                 const screenX = col * tileSize - camera.x;
                 const screenY = row * tileSize - camera.y;
                 
-                // 绘制瓦片
-                this.ctx.fillStyle = this.colors[tile] || '#000';
-                this.ctx.fillRect(screenX, screenY, tileSize, tileSize);
-                
-                // 添加纹理细节
-                this.addTileDetail(tile, screenX, screenY, tileSize, col, row);
+                // 绘制基础瓦片
+                this.drawTile(tile, screenX, screenY, tileSize, col, row, map);
             }
+        }
+        
+        // 绘制建筑细节
+        this.drawBuildingDetails(map, camera);
+    }
+    
+    // 绘制单个瓦片
+    drawTile(tileType, x, y, size, col, row, map) {
+        switch(tileType) {
+            case 0: // GRASS 草地
+                this.ctx.fillStyle = this.colors[0];
+                this.ctx.fillRect(x, y, size, size);
+                // 随机草点
+                if ((col * 7 + row * 13) % 5 === 0) {
+                    this.ctx.fillStyle = '#689F38';
+                    this.ctx.fillRect(x + 8, y + 8, 4, 4);
+                }
+                break;
+                
+            case 1: // ROAD 道路
+                this.ctx.fillStyle = this.colors[1];
+                this.ctx.fillRect(x, y, size, size);
+                // 道路标线
+                this.ctx.fillStyle = '#9E9E9E';
+                this.ctx.fillRect(x + 12, y + 12, 8, 8);
+                break;
+                
+            case 2: // ROAD_SIDEWALK 人行道
+                this.ctx.fillStyle = this.colors[2];
+                this.ctx.fillRect(x, y, size, size);
+                // 人行道砖块纹理
+                this.ctx.strokeStyle = '#9E9E9E';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
+                break;
+                
+            case 3: // WATER 水域
+                this.ctx.fillStyle = this.colors[3];
+                this.ctx.fillRect(x, y, size, size);
+                // 水波纹
+                const waveOffset = (Date.now() / 500 + col * 0.5 + row * 0.3) % Math.PI;
+                this.ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.sin(waveOffset) * 0.05})`;
+                this.ctx.fillRect(x + 4, y + 8 + Math.sin(waveOffset) * 4, size - 8, 2);
+                break;
+                
+            case 4: // SAND 沙滩
+                this.ctx.fillStyle = this.colors[4];
+                this.ctx.fillRect(x, y, size, size);
+                // 沙粒
+                if ((col + row) % 3 === 0) {
+                    this.ctx.fillStyle = '#FFCA28';
+                    this.ctx.fillRect(x + 10, y + 10, 2, 2);
+                }
+                break;
+                
+            case 5: // BUILDING_HOUSE 住宅
+                this.drawBuilding(x, y, size, map, col, row, 'house');
+                break;
+                
+            case 6: // BUILDING_SHOP 商店
+                this.drawBuilding(x, y, size, map, col, row, 'shop');
+                break;
+                
+            case 7: // BUILDING_INN 旅馆
+                this.drawBuilding(x, y, size, map, col, row, 'inn');
+                break;
+                
+            case 8: // BUILDING_TOWNHALL 市政厅
+                this.drawBuilding(x, y, size, map, col, row, 'townhall');
+                break;
+                
+            case 9: // PARK 公园
+                this.ctx.fillStyle = this.colors[9];
+                this.ctx.fillRect(x, y, size, size);
+                // 小径
+                if ((col + row) % 7 === 0) {
+                    this.ctx.fillStyle = '#D7CCC8';
+                    this.ctx.fillRect(x, y, size, size);
+                }
+                break;
+                
+            case 10: // FENCE 围栏
+                this.ctx.fillStyle = this.colors[0]; // 草地背景
+                this.ctx.fillRect(x, y, size, size);
+                // 木栅栏
+                this.ctx.fillStyle = this.colors[10];
+                this.ctx.fillRect(x + 4, y + 4, 4, 24);
+                this.ctx.fillRect(x + 24, y + 4, 4, 24);
+                this.ctx.fillRect(x + 4, y + 10, 24, 4);
+                this.ctx.fillRect(x + 4, y + 20, 24, 4);
+                break;
+                
+            case 11: // BRIDGE 桥
+                this.ctx.fillStyle = this.colors[11];
+                this.ctx.fillRect(x, y, size, size);
+                // 桥栏杆
+                this.ctx.fillStyle = '#6D4C41';
+                this.ctx.fillRect(x, y + 4, size, 4);
+                this.ctx.fillRect(x, y + 24, size, 4);
+                break;
         }
     }
     
-    // 添加瓦片细节
-    addTileDetail(tileType, x, y, size, col, row) {
-        const seed = col * 73856093 ^ row * 19349663;
+    // 绘制建筑
+    drawBuilding(x, y, size, map, col, row, type) {
+        // 找到这个瓦片属于哪个建筑
+        let building = null;
+        for (const [key, b] of Object.entries(map.BUILDINGS)) {
+            if (col >= b.x && col < b.x + b.w &&
+                row >= b.y && row < b.y + b.h) {
+                building = b;
+                break;
+            }
+        }
         
-        switch(tileType) {
-            case 0: // GRASS
-            case 1: // GRASS_DARK
-                // 随机草叶
-                if ((seed % 7) === 0) {
-                    this.ctx.fillStyle = tileType === 0 ? '#6BA832' : '#5A9628';
-                    this.ctx.fillRect(x + (seed % size), y + ((seed >> 4) % size), 2, 3);
-                }
-                break;
-                
-            case 3: // WATER
-                // 水波纹效果
-                const waveOffset = (Date.now() / 500 + (col + row) * 0.5) % Math.PI * 2;
-                this.ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.sin(waveOffset) * 0.05})`;
-                this.ctx.fillRect(x + 4, y + 4 + Math.sin(waveOffset) * 2, size - 8, 2);
-                break;
-                
-            case 4: // SAND
-                // 沙粒效果
-                if ((seed % 5) === 0) {
-                    this.ctx.fillStyle = '#D4C494';
-                    this.ctx.fillRect(x + (seed % size), y + ((seed >> 3) % size), 1, 1);
-                }
-                break;
+        if (!building) {
+            this.ctx.fillStyle = this.colors[type === 'house' ? 5 : type === 'shop' ? 6 : type === 'inn' ? 7 : 8];
+            this.ctx.fillRect(x, y, size, size);
+            return;
+        }
+        
+        const color = building.color || this.colors[5];
+        
+        // 建筑主体
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, size, size);
+        
+        // 屋顶（建筑的顶部一排）
+        if (row === building.y) {
+            this.ctx.fillStyle = '#5D4037'; // 深棕色屋顶
+            this.ctx.fillRect(x, y, size, 8);
+        }
+        
+        // 门（建筑入口）
+        const doorX = building.x + Math.floor(building.w / 2);
+        if (col === doorX && row === building.y + building.h - 1) {
+            this.ctx.fillStyle = '#3E2723';
+            this.ctx.fillRect(x + 8, y, 16, size);
+            // 门把手
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.fillRect(x + 20, y + 16, 3, 3);
+        }
+        
+        // 窗户
+        if ((col - building.x) % 2 === 1 && (row - building.y) % 2 === 1 && row > building.y) {
+            this.ctx.fillStyle = '#FFF9C4';
+            this.ctx.fillRect(x + 8, y + 8, 16, 16);
+            this.ctx.strokeStyle = '#5D4037';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(x + 8, y + 8, 16, 16);
+        }
+    }
+    
+    // 绘制建筑详情（招牌等）
+    drawBuildingDetails(map, camera) {
+        const ctx = this.ctx;
+        
+        for (const [key, building] of Object.entries(map.BUILDINGS)) {
+            const screenX = building.x * map.tileSize - camera.x;
+            const screenY = building.y * map.tileSize - camera.y;
+            
+            // 跳过屏幕外的建筑
+            if (screenX < -200 || screenX > camera.width ||
+                screenY < -100 || screenY > camera.height) {
+                continue;
+            }
+            
+            // 绘制建筑名称牌
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            const textWidth = ctx.measureText(building.name).width;
+            
+            // 名牌背景
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(
+                screenX + building.w * map.tileSize / 2 - textWidth / 2 - 5,
+                screenY - 20,
+                textWidth + 10,
+                18
+            );
+            
+            // 名牌文字
+            ctx.fillStyle = '#FFF';
+            ctx.fillText(
+                building.name,
+                screenX + building.w * map.tileSize / 2,
+                screenY - 8
+            );
+            
+            // 绘制身份图标（针对NPC房子）
+            if (building.owner) {
+                ctx.font = '16px sans-serif';
+                ctx.fillText(
+                    building.owner === '阿狸' ? '🌸' : 
+                    building.owner === '小橘' ? '🎣' : '⛏️',
+                    screenX + building.w * map.tileSize / 2,
+                    screenY + 20
+                );
+            }
         }
     }
     
@@ -109,18 +278,9 @@ class Renderer {
                 continue;
             }
             
-            // 摇树动画
-            let shakeX = 0;
-            if (obj.shaking) {
-                shakeX = Math.sin(Date.now() / 50) * 3;
-            }
-            
             switch(obj.type) {
                 case 'tree':
-                    this.drawTree(screenX + shakeX, screenY, tileSize, obj.variant);
-                    break;
-                case 'rock':
-                    this.drawRock(screenX, screenY, tileSize, obj.variant);
+                    this.drawTree(screenX, screenY, tileSize, obj.variant);
                     break;
                 case 'flower':
                     this.drawFlower(screenX, screenY, tileSize, obj.variant);
@@ -151,24 +311,6 @@ class Renderer {
         this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
         this.ctx.beginPath();
         this.ctx.arc(centerX - 4, groundY - 28, 6, 0, Math.PI * 2);
-        this.ctx.fill();
-    }
-    
-    // 绘制石头
-    drawRock(x, y, size, variant) {
-        const centerX = x + size / 2;
-        const centerY = y + size / 2 + 4;
-        
-        // 石头主体
-        this.ctx.fillStyle = variant === 0 ? '#808080' : '#696969';
-        this.ctx.beginPath();
-        this.ctx.ellipse(centerX, centerY, 10, 7, 0, 0, Math.PI * 2);
-        this.ctx.fill();
-        
-        // 高光
-        this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        this.ctx.beginPath();
-        this.ctx.ellipse(centerX - 3, centerY - 2, 4, 2, -0.3, 0, Math.PI * 2);
         this.ctx.fill();
     }
     
@@ -280,4 +422,9 @@ class Renderer {
             coords.textContent = `X: ${Math.floor(playerX)}, Y: ${Math.floor(playerY)}`;
         }
     }
+}
+
+// 为了测试，导出模块
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Renderer;
 }

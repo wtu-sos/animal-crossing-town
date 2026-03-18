@@ -180,30 +180,67 @@ class GOAPPlanner {
 
 // ==================== 具体行动定义 ====================
 
-// 移动行动
-class MoveToAction extends GOAPAction {
-    constructor(targetType, targetPos) {
-        super(`MoveTo_${targetType}`, 1);
-        this.targetType = targetType;
-        this.targetPos = targetPos;
-        this.preconditions = { isTired: false };
-        this.effects = { atWork: targetType === 'work', atHome: targetType === 'home', atWater: targetType === 'water' };
+// 移动回家行动
+class MoveHomeAction extends GOAPAction {
+    constructor() {
+        super('MoveHome', 1);
+        this.preconditions = {};
+        this.effects = { atHome: true };
     }
     
-    perform(agent, worldState, deltaTime) {
+    perform(agent, worldState, deltaTime, gameplay) {
         this.isRunning = true;
         
-        const dx = this.targetPos.x - agent.x;
-        const dy = this.targetPos.y - agent.y;
+        const map = gameplay.game.map;
+        const homePos = getBuildingPosition(map, agent.homeBuilding);
+        
+        const dx = homePos.x - agent.x;
+        const dy = homePos.y - agent.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance < 10) {
+            agent.vx = 0;
+            agent.vy = 0;
             this.isRunning = false;
             return true;
         }
         
         // 向目标移动
-        const speed = 1;
+        const speed = 1.5;
+        agent.vx = (dx / distance) * speed;
+        agent.vy = (dy / distance) * speed;
+        
+        return false;
+    }
+}
+
+// 移动去工作行动
+class MoveToWorkAction extends GOAPAction {
+    constructor() {
+        super('MoveToWork', 1);
+        this.preconditions = {};
+        this.effects = { atWork: true };
+    }
+    
+    perform(agent, worldState, deltaTime, gameplay) {
+        this.isRunning = true;
+        
+        const map = gameplay.game.map;
+        const workPos = getBuildingPosition(map, agent.workBuilding);
+        
+        const dx = workPos.x - agent.x;
+        const dy = workPos.y - agent.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 10) {
+            agent.vx = 0;
+            agent.vy = 0;
+            this.isRunning = false;
+            return true;
+        }
+        
+        // 向目标移动
+        const speed = 1.5;
         agent.vx = (dx / distance) * speed;
         agent.vy = (dy / distance) * speed;
         
@@ -361,6 +398,10 @@ class GOAPAgent {
     setupActions() {
         const actions = [];
         
+        // 移动行动
+        actions.push(new MoveHomeAction());
+        actions.push(new MoveToWorkAction());
+        
         // 基础行动
         actions.push(new RestAction());
         actions.push(new EatAction());
@@ -370,11 +411,10 @@ class GOAPAgent {
         if (this.role === 'gardener') {
             actions.push(new PlantFlowerAction());
             actions.push(new WaterFlowerAction());
-            actions.push(new ChopTreeAction());
         } else if (this.role === 'fisherman') {
             actions.push(new FishAction());
         } else if (this.role === 'miner') {
-            actions.push(new ChopTreeAction()); // 挖矿用砍树代替
+            actions.push(new ChopTreeAction());
         }
         
         return actions;
@@ -422,6 +462,25 @@ class GOAPAgent {
         const dy = this.npc.y - player.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         this.worldState.set('playerNearby', distance < 60);
+        
+        // 检查是否在家/在工作地点
+        const map = gameplay.game.map;
+        if (map && map.BUILDINGS) {
+            const homePos = getBuildingPosition(map, this.npc.homeBuilding);
+            const workPos = getBuildingPosition(map, this.npc.workBuilding);
+            
+            const distToHome = Math.sqrt(
+                Math.pow(this.npc.x - homePos.x, 2) + 
+                Math.pow(this.npc.y - homePos.y, 2)
+            );
+            const distToWork = Math.sqrt(
+                Math.pow(this.npc.x - workPos.x, 2) + 
+                Math.pow(this.npc.y - workPos.y, 2)
+            );
+            
+            this.worldState.set('atHome', distToHome < 50);
+            this.worldState.set('atWork', distToWork < 50);
+        }
     }
     
     // 选择目标（基于优先级）
@@ -488,34 +547,47 @@ class GOAPAgent {
     }
 }
 
-// ==================== NPC 身份配置 ====================
+// ==================== NPC 身份配置 - 大富翁小镇版 ====================
 
 const NPC_ROLES = {
     阿狸: {
         role: 'gardener',
-        homePos: { x: 200, y: 200 },
-        workPos: { x: 400, y: 300 },
+        homeBuilding: 'npc1House',
+        workBuilding: 'flowerShop',
         color: '#FF6B6B',
         icon: '🌸',
-        dialogues: ['我喜欢种花！', '今天的花开得真好~', '要不要买点花种子？']
+        dialogues: ['欢迎来我的花店！', '今天的玫瑰开得很美~', '买点种子回去种吧！', '种花可是我的最爱！']
     },
     小橘: {
         role: 'fisherman',
-        homePos: { x: 600, y: 200 },
-        workPos: { x: 800, y: 400 }, // 水边
+        homeBuilding: 'npc2House',
+        workBuilding: 'dock',
         color: '#4ECDC4',
         icon: '🎣',
-        dialogues: ['钓鱼需要耐心~', '今天我钓到了大鱼！', '要不要一起去钓鱼？']
+        dialogues: ['码头今天的鱼很多！', '刚钓到的鲈鱼，新鲜！', '要不要学钓鱼？', '我的渔具店有卖鱼竿哦！']
     },
     小白: {
         role: 'miner',
-        homePos: { x: 400, y: 600 },
-        workPos: { x: 700, y: 700 },
+        homeBuilding: 'npc3House',
+        workBuilding: 'toolShop',
         color: '#FFE66D',
         icon: '⛏️',
-        dialogues: ['山里有好多矿石！', '挖矿可是体力活~', '小心别被砸到！']
+        dialogues: ['工具店新到了镐子！', '挖矿需要好工具~', '要小心安全哦！', '我的工具质量最好！']
     }
 };
+
+// 从地图获取建筑位置
+function getBuildingPosition(map, buildingKey) {
+    if (!map || !map.BUILDINGS) return { x: 500, y: 500 };
+    const building = map.BUILDINGS[buildingKey];
+    if (!building) return { x: 500, y: 500 };
+    
+    // 返回建筑入口位置（底部中间）
+    return {
+        x: (building.x + building.w / 2) * map.tileSize,
+        y: (building.y + building.h) * map.tileSize
+    };
+}
 
 // NPC状态显示
 function getNPCStatus(npc, agent) {
