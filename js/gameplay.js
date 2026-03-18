@@ -14,28 +14,46 @@ class GameplaySystem {
         this.fishingMiniGame = null;
         this.plantedFlowers = [];
         
+        // 世界状态（用于GOAP）
+        this.worldState = new WorldState();
+        
         // 初始化NPC
         this.npcs = this.generateNPCs();
+        
+        // 初始化GOAP Agents
+        this.agents = this.initGOAPAgents();
         
         // 绑定按键
         this.bindKeys();
     }
     
+    // 初始化GOAP Agents
+    initGOAPAgents() {
+        const agents = [];
+        for (const npc of this.npcs) {
+            const agent = new GOAPAgent(npc, npc.role, this.worldState);
+            agents.push(agent);
+        }
+        return agents;
+    }
+    
     // 生成NPC
     generateNPCs() {
         const npcs = [];
-        const names = ['阿狸', '小橘', '小白', '旺财', '花花'];
-        const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181'];
+        const names = ['阿狸', '小橘', '小白'];
         
         for (let i = 0; i < 3; i++) {
+            const name = names[i];
+            const config = NPC_ROLES[name];
             let x, y;
             let safe = false;
             let attempts = 0;
             
+            // 从家中开始
+            x = config.homePos.x;
+            y = config.homePos.y;
+            
             while (!safe && attempts < 100) {
-                x = Math.random() * this.game.map.pixelWidth;
-                y = Math.random() * this.game.map.pixelHeight;
-                
                 // 检查不与地图碰撞
                 if (!this.game.map.checkCollision(x, y, 24, 24)) {
                     // 检查不与其他NPC重叠
@@ -54,6 +72,11 @@ class GameplaySystem {
                         safe = true;
                     }
                 }
+                
+                if (!safe) {
+                    x = Math.random() * this.game.map.pixelWidth;
+                    y = Math.random() * this.game.map.pixelHeight;
+                }
                 attempts++;
             }
             
@@ -64,18 +87,28 @@ class GameplaySystem {
                 vy: 0,
                 width: 24,
                 height: 24,
-                name: names[i],
-                color: colors[i],
-                dialogues: this.getNPCDialogues(i),
+                name: name,
+                role: config.role,
+                homePos: config.homePos,
+                workPos: config.workPos,
+                color: config.color,
+                dialogues: config.dialogues,
                 currentDialogue: 0,
                 direction: 'down',
                 animationFrame: 0,
                 moveTimer: 0,
                 moveInterval: 100 + Math.random() * 200,
-                isMoving: false
+                isMoving: false,
+                energy: 100, // GOAP能量系统
+                hasTool: true // 职业工具
             });
         }
         return npcs;
+    }
+    
+    // 获取NPC配置
+    getNPCConfig(name) {
+        return NPC_ROLES[name] || NPC_ROLES['阿狸'];
     }
     
     // NPC对话
@@ -516,45 +549,23 @@ class GameplaySystem {
         document.getElementById('game-container').appendChild(inventoryPanel);
     }
     
-    // 更新NPC（移动和碰撞）
-    updateNPCs() {
-        for (const npc of this.npcs) {
+    // 更新NPC（GOAP驱动）
+    updateNPCs(deltaTime = 16) {
+        // 更新世界状态时间
+        this.worldState.updateTime(this.game.gameTime);
+        
+        // 更新每个GOAP Agent
+        for (let i = 0; i < this.agents.length; i++) {
+            const agent = this.agents[i];
+            const npc = this.npcs[i];
+            
+            // GOAP规划更新
+            agent.update(deltaTime, this);
+            
             // 更新动画帧
             npc.animationFrame = (npc.animationFrame + 1) % 4;
             
-            // 移动计时器
-            npc.moveTimer++;
-            
-            // 随机移动逻辑
-            if (npc.moveTimer >= npc.moveInterval) {
-                npc.moveTimer = 0;
-                npc.moveInterval = 100 + Math.random() * 200;
-                
-                // 随机决定方向或停止
-                const rand = Math.random();
-                if (rand < 0.3) {
-                    // 停止
-                    npc.vx = 0;
-                    npc.vy = 0;
-                    npc.isMoving = false;
-                } else {
-                    // 随机方向
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 0.5 + Math.random() * 0.5;
-                    npc.vx = Math.cos(angle) * speed;
-                    npc.vy = Math.sin(angle) * speed;
-                    npc.isMoving = true;
-                    
-                    // 更新朝向
-                    if (Math.abs(npc.vx) > Math.abs(npc.vy)) {
-                        npc.direction = npc.vx > 0 ? 'right' : 'left';
-                    } else {
-                        npc.direction = npc.vy > 0 ? 'down' : 'up';
-                    }
-                }
-            }
-            
-            // 应用移动（带碰撞检测）
+            // 根据GOAP决策应用移动
             if (npc.isMoving) {
                 this.moveNPCWithCollision(npc);
             }

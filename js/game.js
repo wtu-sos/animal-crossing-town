@@ -49,8 +49,8 @@ class Game {
         // 初始化玩法系统
         this.gameplay = new GameplaySystem(this);
         
-        // 定期更新NPC动画
-        setInterval(() => this.gameplay.updateNPCs(), 200);
+        // 定期更新NPC（GOAP驱动）
+        this.lastNPCUpdate = 0;
         
         // 初始化
         this.init();
@@ -118,6 +118,13 @@ class Game {
         // 更新时间
         this.gameTime += deltaTime / 1000 / 6;
         if (this.gameTime >= 1440) this.gameTime = 0;
+        
+        // 更新NPC（每200ms）
+        this.lastNPCUpdate += deltaTime;
+        if (this.lastNPCUpdate >= 200) {
+            this.gameplay.updateNPCs(this.lastNPCUpdate);
+            this.lastNPCUpdate = 0;
+        }
     }
     
     render() {
