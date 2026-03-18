@@ -63,6 +63,35 @@ animal-crossing-town/
 - **Canvas API**：2D 渲染
 - **纯原生 JS**：无外部依赖
 - **响应式设计**：适配移动端和桌面端
+- **Jest**：单元测试
+
+## 🧪 测试
+
+项目包含完整的单元测试覆盖：
+
+```bash
+# 安装依赖
+npm install
+
+# 运行测试
+npm test
+
+# 生成覆盖率报告
+npm run test:coverage
+```
+
+| 模块 | 测试文件 | 覆盖功能 |
+|------|----------|----------|
+| Player | `player.test.js` | 移动、碰撞、动画、边界限制 |
+| Camera | `camera.test.js` | 跟随、视差滚动、坐标转换 |
+| GameMap | `map.test.js` | 地图生成、碰撞检测、物体管理 |
+| InputManager | `input.test.js` | 键盘输入、摇杆控制 |
+
+### 测试结果
+
+运行测试会生成详细的覆盖率报告，保存在 `coverage/` 目录下。打开 `coverage/lcov-report/index.html` 查看可视化报告。
+
+![CI](https://github.com/wtu-sos/animal-crossing-town/workflows/Tests/badge.svg)
 
 ## 🔮 可扩展功能
 

@@ -1,0 +1,28 @@
+{
+  "name": "animal-crossing-town",
+  "version": "1.0.0",
+  "description": "一个动森风格的像素风小镇漫游 H5 游戏。",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --reporters=default --reporters=jest-junit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wtu-sos/animal-crossing-town.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wtu-sos/animal-crossing-town/issues"
+  },
+  "homepage": "https://github.com/wtu-sos/animal-crossing-town#readme",
+  "devDependencies": {
+    "@jest/globals": "^30.3.0",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0"
+  }
+}

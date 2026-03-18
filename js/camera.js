@@ -59,9 +59,10 @@ class Camera {
     
     // 世界坐标转屏幕坐标
     worldToScreen(worldX, worldY, layer = 3) {
-        const layerOffset = this.parallaxLayers[layer].offset - this.x * this.parallaxLayers[layer].speed;
+        const layerSpeed = this.parallaxLayers[layer].speed;
+        // 视差效果：不同层以不同速度移动
         return {
-            x: worldX - this.x - layerOffset,
+            x: worldX - this.x * layerSpeed,
             y: worldY - this.y
         };
     }
@@ -76,7 +77,8 @@ class Camera {
     
     // 获取视差偏移
     getParallaxOffset(layer) {
-        return this.parallaxLayers[layer].offset;
+        // 直接计算偏移，不依赖 update() 的缓存
+        return this.x * this.parallaxLayers[layer].speed;
     }
     
     // 设置地图边界
@@ -94,4 +96,9 @@ class Camera {
         this.targetX = Math.max(0, Math.min(this.targetX, this.bounds.width - this.width));
         this.targetY = Math.max(0, Math.min(this.targetY, this.bounds.height - this.height));
     }
+}
+
+// 为了测试，导出模块
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Camera;
 }

@@ -57,7 +57,9 @@ class GameMap {
     
     // 简单噪声函数
     simpleNoise(x, y) {
-        return (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+        const value = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        // 使用小数部分，确保结果在 0-1 之间
+        return value - Math.floor(value);
     }
     
     // 生成物体
@@ -188,4 +190,9 @@ class GameMap {
         }
         return null;
     }
+}
+
+// 为了测试，导出模块
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameMap;
 }

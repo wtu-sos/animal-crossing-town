@@ -37,7 +37,8 @@ class InputManager {
         
         if (!joystickZone) return;
         
-        let startX, startY;
+        this.startX = 0;
+        this.startY = 0;
         const maxDistance = 40; // 摇杆最大移动距离
         
         const handleStart = (e) => {
@@ -47,8 +48,8 @@ class InputManager {
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
             
-            startX = centerX;
-            startY = centerY;
+            this.startX = centerX;
+            this.startY = centerY;
             
             this.joystick.active = true;
             joystickStick.classList.add('active');
@@ -142,4 +143,9 @@ class InputManager {
     isKeyPressed(key) {
         return !!this.keys[key.toLowerCase()];
     }
+}
+
+// 为了测试，导出模块
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = InputManager;
 }
