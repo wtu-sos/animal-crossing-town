@@ -102,6 +102,11 @@ class Game {
         // 更新玩家
         this.player.update(this.input, this.map);
         
+        // 处理玩家与NPC的碰撞
+        if (this.gameplay) {
+            this.handlePlayerNPCCollision();
+        }
+        
         // 更新相机
         this.camera.follow(
             this.player.x + this.player.width / 2,
@@ -164,6 +169,37 @@ class Game {
         gradient.addColorStop(1, bottomColor);
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    
+    // 处理玩家与NPC的碰撞
+    handlePlayerNPCCollision() {
+        const player = this.player;
+        
+        for (const npc of this.gameplay.npcs) {
+            const dx = player.x - npc.x;
+            const dy = player.y - npc.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 碰撞距离阈值（玩家和NPC的半径之和）
+            const minDistance = 24;
+            
+            if (distance < minDistance && distance > 0) {
+                // 推开玩家（滑动效果）
+                const pushX = (dx / distance) * (minDistance - distance) * 0.5;
+                const pushY = (dy / distance) * (minDistance - distance) * 0.5;
+                
+                // 检查推开后的位置是否合法
+                const newX = player.x + pushX;
+                const newY = player.y + pushY;
+                
+                if (!this.map.checkCollision(newX, player.y, player.width, player.height)) {
+                    player.x = newX;
+                }
+                if (!this.map.checkCollision(player.x, newY, player.width, player.height)) {
+                    player.y = newY;
+                }
+            }
+        }
     }
     
     drawDebugInfo() {

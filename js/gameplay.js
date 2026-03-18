@@ -30,23 +30,49 @@ class GameplaySystem {
         for (let i = 0; i < 3; i++) {
             let x, y;
             let safe = false;
-            while (!safe) {
+            let attempts = 0;
+            
+            while (!safe && attempts < 100) {
                 x = Math.random() * this.game.map.pixelWidth;
                 y = Math.random() * this.game.map.pixelHeight;
+                
+                // 检查不与地图碰撞
                 if (!this.game.map.checkCollision(x, y, 24, 24)) {
-                    safe = true;
+                    // 检查不与其他NPC重叠
+                    let overlap = false;
+                    for (const npc of npcs) {
+                        const dx = x - npc.x;
+                        const dy = y - npc.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < 50) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!overlap) {
+                        safe = true;
+                    }
                 }
+                attempts++;
             }
             
             npcs.push({
                 x: x,
                 y: y,
+                vx: 0,
+                vy: 0,
+                width: 24,
+                height: 24,
                 name: names[i],
                 color: colors[i],
                 dialogues: this.getNPCDialogues(i),
                 currentDialogue: 0,
                 direction: 'down',
-                animationFrame: 0
+                animationFrame: 0,
+                moveTimer: 0,
+                moveInterval: 100 + Math.random() * 200,
+                isMoving: false
             });
         }
         return npcs;
@@ -490,11 +516,105 @@ class GameplaySystem {
         document.getElementById('game-container').appendChild(inventoryPanel);
     }
     
-    // 更新NPC动画
+    // 更新NPC（移动和碰撞）
     updateNPCs() {
         for (const npc of this.npcs) {
+            // 更新动画帧
             npc.animationFrame = (npc.animationFrame + 1) % 4;
+            
+            // 移动计时器
+            npc.moveTimer++;
+            
+            // 随机移动逻辑
+            if (npc.moveTimer >= npc.moveInterval) {
+                npc.moveTimer = 0;
+                npc.moveInterval = 100 + Math.random() * 200;
+                
+                // 随机决定方向或停止
+                const rand = Math.random();
+                if (rand < 0.3) {
+                    // 停止
+                    npc.vx = 0;
+                    npc.vy = 0;
+                    npc.isMoving = false;
+                } else {
+                    // 随机方向
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 0.5 + Math.random() * 0.5;
+                    npc.vx = Math.cos(angle) * speed;
+                    npc.vy = Math.sin(angle) * speed;
+                    npc.isMoving = true;
+                    
+                    // 更新朝向
+                    if (Math.abs(npc.vx) > Math.abs(npc.vy)) {
+                        npc.direction = npc.vx > 0 ? 'right' : 'left';
+                    } else {
+                        npc.direction = npc.vy > 0 ? 'down' : 'up';
+                    }
+                }
+            }
+            
+            // 应用移动（带碰撞检测）
+            if (npc.isMoving) {
+                this.moveNPCWithCollision(npc);
+            }
         }
+    }
+    
+    // NPC移动带碰撞检测
+    moveNPCWithCollision(npc) {
+        const newX = npc.x + npc.vx;
+        const newY = npc.y + npc.vy;
+        
+        // 检查与地图的碰撞
+        const mapCollision = this.game.map.checkCollision(newX, newY, npc.width, npc.height);
+        if (mapCollision) {
+            // 碰到墙壁，改变方向
+            npc.vx *= -1;
+            npc.vy *= -1;
+            return;
+        }
+        
+        // 检查与其他NPC的碰撞
+        for (const other of this.npcs) {
+            if (other === npc) continue;
+            
+            const dx = newX - other.x;
+            const dy = newY - other.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 30) {
+                // NPC之间碰撞，推开
+                const pushX = dx / distance * 0.5;
+                const pushY = dy / distance * 0.5;
+                npc.vx += pushX;
+                npc.vy += pushY;
+                return;
+            }
+        }
+        
+        // 检查与玩家的碰撞
+        const player = this.game.player;
+        const pdx = newX - player.x;
+        const pdy = newY - player.y;
+        const pDistance = Math.sqrt(pdx * pdx + pdy * pdy);
+        
+        if (pDistance < 30) {
+            // 与玩家碰撞，NPC退让
+            const pushX = pdx / pDistance * 0.3;
+            const pushY = pdy / pDistance * 0.3;
+            npc.vx += pushX;
+            npc.vy += pushY;
+            return;
+        }
+        
+        // 应用移动
+        npc.x = newX;
+        npc.y = newY;
+        
+        // 边界限制
+        npc.x = Math.max(0, Math.min(npc.x, this.game.map.pixelWidth - npc.width));
+        npc.y = Math.max(0, Math.min(npc.y, this.game.map.pixelHeight - npc.height));
     }
     
     // 渲染NPC
