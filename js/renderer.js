@@ -175,7 +175,13 @@ class Renderer {
                 break;
             }
         }
-        
+
+        // 特殊绘制饭店
+        if (building && building.shopType === 'restaurant') {
+            this.drawRestaurant(x, y, size, building, col, row);
+            return;
+        }
+
         if (!building) {
             this.ctx.fillStyle = this.colors[type === 'house' ? 5 : type === 'shop' ? 6 : type === 'inn' ? 7 : 8];
             this.ctx.fillRect(x, y, size, size);
@@ -214,6 +220,57 @@ class Renderer {
         }
     }
     
+    // 绘制饭店（特殊样式）
+    drawRestaurant(x, y, size, building, col, row) {
+        const color = building.color || '#FF6347';
+        
+        // 建筑主体 - 红色系
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, size, size);
+        
+        // 屋顶（中国传统风格）
+        if (row === building.y) {
+            this.ctx.fillStyle = '#8B0000'; // 深红色屋顶
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y + 8);
+            this.ctx.lineTo(x + size / 2, y);
+            this.ctx.lineTo(x + size, y + 8);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+        
+        // 门（建筑底部中间）
+        const doorX = building.x + Math.floor(building.w / 2);
+        if (col === doorX && row === building.y + building.h - 1) {
+            this.ctx.fillStyle = '#4A0000';
+            this.ctx.fillRect(x + 8, y, 16, size);
+            // 门帘
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.fillRect(x + 10, y + 5, 12, 8);
+        }
+        
+        // 窗户 - 灯笼样式
+        if ((col - building.x) % 2 === 1 && (row - building.y) % 2 === 1 && row > building.y) {
+            this.ctx.fillStyle = '#FFE4B5'; // 暖黄色
+            this.ctx.beginPath();
+            this.ctx.arc(x + size / 2, y + size / 2, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#8B0000';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+        }
+        
+        // 招牌（建筑顶部）
+        if (row === building.y + 1 && col === building.x + Math.floor(building.w / 2)) {
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.fillRect(x - 4, y - 4, size + 8, 10);
+            this.ctx.fillStyle = '#8B0000';
+            this.ctx.font = '8px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('食', x + size / 2, y + 4);
+        }
+    }
+
     // 绘制建筑详情（招牌等）
     drawBuildingDetails(map, camera) {
         const ctx = this.ctx;

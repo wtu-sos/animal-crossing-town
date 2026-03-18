@@ -248,6 +248,68 @@ class MoveToWorkAction extends GOAPAction {
     }
 }
 
+// 移动去饭店行动
+class MoveToRestaurantAction extends GOAPAction {
+    constructor() {
+        super('MoveToRestaurant', 1);
+        this.preconditions = {};
+        this.effects = { atRestaurant: true };
+    }
+    
+    perform(agent, worldState, deltaTime, gameplay) {
+        this.isRunning = true;
+        
+        const map = gameplay.game.map;
+        const restaurantPos = getBuildingPosition(map, 'restaurant');
+        
+        const dx = restaurantPos.x - agent.x;
+        const dy = restaurantPos.y - agent.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 10) {
+            agent.vx = 0;
+            agent.vy = 0;
+            this.isRunning = false;
+            return true;
+        }
+        
+        // 向目标移动
+        const speed = 1.5;
+        agent.vx = (dx / distance) * speed;
+        agent.vy = (dy / distance) * speed;
+        
+        return false;
+    }
+}
+
+// 在饭店用餐行动
+class EatAtRestaurantAction extends GOAPAction {
+    constructor() {
+        super('EatAtRestaurant', 1);
+        this.preconditions = { atRestaurant: true };
+        this.effects = { isHungry: false, energy: 80 };
+        this.eatTime = 0;
+    }
+    
+    perform(agent, worldState, deltaTime, gameplay) {
+        this.isRunning = true;
+        this.eatTime += deltaTime;
+        
+        // 吃饭动画 - 静止不动
+        agent.vx = 0;
+        agent.vy = 0;
+        
+        // 吃饭需要3秒
+        if (this.eatTime >= 3000) {
+            this.eatTime = 0;
+            this.isRunning = false;
+            return true;
+        }
+        
+        return false;
+    }
+}
+
 // 种花行动
 class PlantFlowerAction extends GOAPAction {
     constructor() {
@@ -401,10 +463,12 @@ class GOAPAgent {
         // 移动行动
         actions.push(new MoveHomeAction());
         actions.push(new MoveToWorkAction());
+        actions.push(new MoveToRestaurantAction());
         
         // 基础行动
         actions.push(new RestAction());
         actions.push(new EatAction());
+        actions.push(new EatAtRestaurantAction());
         actions.push(new InteractWithPlayerAction());
         
         // 职业相关行动
@@ -421,22 +485,22 @@ class GOAPAgent {
     }
     
     // 更新状态
-    update(deltaTime, gameplay) {
+    update(deltaTime, gameplay, gameTime) {
         this.planTimer++;
-        
+
         // 更新世界状态
         this.updateWorldState(gameplay);
-        
-        // 定期重新规划（如果没有当前行动或计划为空）
+
+        // 定期重新规划
         if (this.planTimer >= this.replanInterval) {
             this.planTimer = 0;
             // 只有在没有正在执行的移动时才重新规划
             if (!this.currentAction || this.currentAction.isDone()) {
-                this.selectGoal();
+                this.selectGoal(gameTime);
                 this.makePlan();
             }
         }
-        
+
         // 如果当前行动完成，获取下一个
         if ((!this.currentAction || this.currentAction.isDone()) && this.currentPlan.length > 0) {
             this.currentAction = this.currentPlan.shift();
@@ -444,7 +508,7 @@ class GOAPAgent {
                 this.currentAction.reset();
             }
         }
-        
+
         // 根据行动更新NPC移动
         this.updateMovement(gameplay);
     }
@@ -482,16 +546,33 @@ class GOAPAgent {
         }
     }
     
-    // 选择目标（基于优先级）
-    selectGoal() {
-        // 优先级：低能量 > 饥饿 > 工作
+    // 选择目标（基于优先级和时间）
+    selectGoal(gameTime) {
+        // 获取当前时间（小时）
+        const hours = Math.floor((gameTime || 360) / 60);
+        
+        // 三餐时间检测
+        const isBreakfastTime = hours >= 7 && hours < 9;
+        const isLunchTime = hours >= 11 && hours < 13;
+        const isDinnerTime = hours >= 17 && hours < 19;
+        const isMealTime = isBreakfastTime || isLunchTime || isDinnerTime;
+        
+        // 优先级：低能量 > 用餐时间 > 饥饿 > 工作
         if (this.worldState.get('isTired')) {
+            // 累了就回家休息
             this.currentGoal = { energy: 100, atHome: true };
+            console.log(`${this.npc.name} 的目标: 回家休息 (能量:${this.npc.energy})`);
+        } else if (isMealTime && !this.worldState.get('justAte')) {
+            // 到饭点了，去饭店吃饭
+            const mealName = isBreakfastTime ? '早餐' : isLunchTime ? '午餐' : '晚餐';
+            this.currentGoal = { isHungry: false, atRestaurant: true };
+            console.log(`${this.npc.name} 的目标: 去吃${mealName}`);
         } else if (this.worldState.get('isHungry')) {
+            // 饿了但没到饭点，随便吃点
             this.currentGoal = { isHungry: false };
         } else {
-            // 随机选择一个工作目标
-            this.currentGoal = this.goals[0];
+            // 工作时间
+            this.currentGoal = this.goals[0]; // 默认工作目标
         }
     }
     
@@ -615,6 +696,10 @@ function getNPCStatus(npc, agent) {
     if (actionName === 'WaterFlower') return '💧 浇花中';
     if (actionName === 'ChopTree') return '🪓 工作中';
     if (actionName === 'Eat') return '🍎 进食中';
+    if (actionName === 'EatAtRestaurant') return '🍜 用餐中';
+    if (actionName === 'MoveToRestaurant') return '🚶 去饭店';
+    if (actionName === 'MoveHome') return '🚶 回家';
+    if (actionName === 'MoveToWork') return '🚶 去上班';
     if (actionName.startsWith('MoveTo')) return '🚶 移动中';
     if (actionName === 'InteractWithPlayer') return '💬 对话中';
 
@@ -630,6 +715,8 @@ if (typeof module !== 'undefined' && module.exports) {
         GOAPAgent,
         MoveHomeAction,
         MoveToWorkAction,
+        MoveToRestaurantAction,
+        EatAtRestaurantAction,
         RestAction,
         EatAction,
         FishAction,

@@ -38,6 +38,7 @@ class GameMap {
             
             inn: { x: 30, y: 20, w: 6, h: 5, type: 'inn', name: '🏨温泉旅馆', color: '#DDA0DD' },
             cafe: { x: 40, y: 20, w: 5, h: 4, type: 'shop', name: '☕咖啡馆', color: '#8B4513', shopType: 'cafe' },
+            restaurant: { x: 20, y: 20, w: 6, h: 5, type: 'shop', name: '🍜大饭店', color: '#FF6347', shopType: 'restaurant' },
             
             townHall: { x: 25, y: 30, w: 8, h: 6, type: 'townhall', name: '🏛️市政厅', color: '#DAA520' },
             museum: { x: 40, y: 30, w: 6, h: 5, type: 'shop', name: '🏛️博物馆', color: '#708090', shopType: 'museum' },

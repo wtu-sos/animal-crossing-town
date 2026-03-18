@@ -581,16 +581,18 @@ class GameplaySystem {
     
     // 更新NPC（GOAP驱动）
     updateNPCs(deltaTime = 16) {
+        const gameTime = this.game.gameTime;
+        
         // 更新世界状态时间
-        this.worldState.updateTime(this.game.gameTime);
+        this.worldState.updateTime(gameTime);
         
         // 更新每个GOAP Agent
         for (let i = 0; i < this.agents.length; i++) {
             const agent = this.agents[i];
             const npc = this.npcs[i];
             
-            // GOAP规划更新
-            agent.update(deltaTime, this);
+            // GOAP规划更新（传入游戏时间）
+            agent.update(deltaTime, this, gameTime);
             
             // 更新动画帧
             npc.animationFrame = (npc.animationFrame + 1) % 4;
