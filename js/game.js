@@ -330,6 +330,12 @@ class Game {
 // 全局迷你地图切换函数
 function toggleMiniMap() {
     if (window.game) {
+        // 关闭任务面板（互斥）
+        const taskPanel = document.getElementById('task-panel');
+        if (taskPanel && taskPanel.style.display !== 'none') {
+            taskPanel.style.display = 'none';
+        }
+        
         window.game.minimapVisible = !window.game.minimapVisible;
         const container = document.getElementById('minimap-container');
         if (container) {
