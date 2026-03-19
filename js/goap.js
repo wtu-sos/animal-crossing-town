@@ -249,10 +249,33 @@ class MoveHomeAction extends GOAPAction {
             return true;
         }
         
-        // 向目标移动
+        // 计算目标速度
         const speed = 1.5;
-        agent.vx = (dx / distance) * speed;
-        agent.vy = (dy / distance) * speed;
+        let vx = (dx / distance) * speed;
+        let vy = (dy / distance) * speed;
+        
+        // 检查碰撞 - 如果会碰到障碍物，尝试绕路
+        const newX = agent.x + vx;
+        const newY = agent.y + vy;
+        
+        if (map.checkCollision(newX, newY, agent.width || 24, agent.height || 24)) {
+            // 尝试只沿X方向移动
+            if (!map.checkCollision(agent.x + vx, agent.y, agent.width || 24, agent.height || 24)) {
+                vy = 0;
+            }
+            // 尝试只沿Y方向移动
+            else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
+                vx = 0;
+            }
+            // 都撞，停止并稍后再试
+            else {
+                vx = 0;
+                vy = 0;
+            }
+        }
+        
+        agent.vx = vx;
+        agent.vy = vy;
         
         return false;
     }
@@ -283,10 +306,28 @@ class MoveToWorkAction extends GOAPAction {
             return true;
         }
         
-        // 向目标移动
+        // 计算目标速度
         const speed = 1.5;
-        agent.vx = (dx / distance) * speed;
-        agent.vy = (dy / distance) * speed;
+        let vx = (dx / distance) * speed;
+        let vy = (dy / distance) * speed;
+        
+        // 检查碰撞
+        const newX = agent.x + vx;
+        const newY = agent.y + vy;
+        
+        if (map.checkCollision(newX, newY, agent.width || 24, agent.height || 24)) {
+            if (!map.checkCollision(agent.x + vx, agent.y, agent.width || 24, agent.height || 24)) {
+                vy = 0;
+            } else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
+                vx = 0;
+            } else {
+                vx = 0;
+                vy = 0;
+            }
+        }
+        
+        agent.vx = vx;
+        agent.vy = vy;
         
         return false;
     }
@@ -317,10 +358,28 @@ class MoveToRestaurantAction extends GOAPAction {
             return true;
         }
         
-        // 向目标移动
+        // 计算目标速度
         const speed = 1.5;
-        agent.vx = (dx / distance) * speed;
-        agent.vy = (dy / distance) * speed;
+        let vx = (dx / distance) * speed;
+        let vy = (dy / distance) * speed;
+        
+        // 检查碰撞
+        const newX = agent.x + vx;
+        const newY = agent.y + vy;
+        
+        if (map.checkCollision(newX, newY, agent.width || 24, agent.height || 24)) {
+            if (!map.checkCollision(agent.x + vx, agent.y, agent.width || 24, agent.height || 24)) {
+                vy = 0;
+            } else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
+                vx = 0;
+            } else {
+                vx = 0;
+                vy = 0;
+            }
+        }
+        
+        agent.vx = vx;
+        agent.vy = vy;
         
         return false;
     }
