@@ -612,6 +612,11 @@ class GameplaySystem {
             if (npc.isMoving) {
                 this.moveNPCWithCollision(npc);
             }
+            
+            // 调试：输出NPC状态
+            if (window.game && window.game.debug && i === 0 && Math.random() < 0.02) {
+                console.log(`[${npc.name}] pos:(${npc.x.toFixed(0)},${npc.y.toFixed(0)}) vx:${npc.vx.toFixed(2)} vy:${npc.vy.toFixed(2)} isMoving:${npc.isMoving} action:${agent.currentAction ? agent.currentAction.name : 'null'}`);
+            }
         }
     }
     
