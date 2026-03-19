@@ -812,3 +812,38 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// NPC状态显示函数
+function getNPCStatus(npc, agent) {
+    if (!agent || !agent.currentGoal) return '💤 空闲';
+    
+    const goalName = agent.currentGoal.name;
+    const actionIndex = agent.currentActionIndex;
+    const totalActions = agent.currentPlan.length;
+    
+    if (totalActions === 0) return '💤 空闲';
+    
+    // 根据当前行动返回状态
+    if (actionIndex < totalActions) {
+        const currentAction = agent.currentPlan[actionIndex];
+        if (currentAction) {
+            switch(currentAction.name) {
+                case 'GoHome': return '🏠 回家';
+                case 'GoToWork': return '💼 去工作';
+                case 'GoToRestaurant': return '🍽️ 去吃饭';
+                case 'Rest': return '😴 休息';
+                case 'Work': return '🔨 工作中';
+                case 'Eat': return '🍜 用餐';
+                default: return '🚶 移动中';
+            }
+        }
+    }
+    
+    // 根据目标返回状态
+    switch(goalName) {
+        case 'Rest': return '😴 休息';
+        case 'Eat': return '🍜 吃饭';
+        case 'Work': return '💼 工作';
+        default: return '🤔 思考';
+    }
+}
