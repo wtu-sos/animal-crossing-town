@@ -224,24 +224,42 @@ class GOAPPlanner {
 
 // ==================== 具体行动定义 ====================
 
-// 移动回家行动
-class MoveHomeAction extends GOAPAction {
-    constructor() {
-        super('MoveHome', 1);
-        this.preconditions = {};
-        this.effects = { atHome: true };
+// 带寻路的移动行动基类
+class PathfindingMoveAction extends GOAPAction {
+    constructor(name, getTargetPos) {
+        super(name, 1);
+        this.getTargetPos = getTargetPos;
+        this.path = null;
+        this.currentPathIndex = 0;
+        this.lastAgentPos = null;
+        this.stuckCounter = 0;
+    }
+    
+    reset() {
+        super.reset();
+        this.path = null;
+        this.currentPathIndex = 0;
+        this.lastAgentPos = null;
+        this.stuckCounter = 0;
     }
     
     perform(agent, worldState, deltaTime, gameplay) {
         this.isRunning = true;
         
         const map = gameplay.game.map;
-        const homePos = getBuildingPosition(map, agent.homeBuilding);
+        const targetPos = this.getTargetPos(map, agent);
         
-        const dx = homePos.x - agent.x;
-        const dy = homePos.y - agent.y;
+        if (!targetPos) {
+            agent.vx = 0;
+            agent.vy = 0;
+            return true; // 无法获取目标，结束行动
+        }
+        
+        const dx = targetPos.x - agent.x;
+        const dy = targetPos.y - agent.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
+        // 到达目标
         if (distance < 10) {
             agent.vx = 0;
             agent.vy = 0;
@@ -249,26 +267,79 @@ class MoveHomeAction extends GOAPAction {
             return true;
         }
         
-        // 计算目标速度
+        // 检查是否卡住
+        if (this.lastAgentPos) {
+            const moveDist = Math.sqrt(
+                Math.pow(agent.x - this.lastAgentPos.x, 2) + 
+                Math.pow(agent.y - this.lastAgentPos.y, 2)
+            );
+            if (moveDist < 0.5) {
+                this.stuckCounter++;
+                if (this.stuckCounter > 60) { // 约2秒卡住
+                    // 重新寻路
+                    this.path = null;
+                    this.stuckCounter = 0;
+                }
+            } else {
+                this.stuckCounter = 0;
+            }
+        }
+        this.lastAgentPos = { x: agent.x, y: agent.y };
+        
+        // 如果没有路径或需要重新寻路，计算路径
+        if (!this.path || this.currentPathIndex >= this.path.length) {
+            this.path = map.findPath(agent.x, agent.y, targetPos.x, targetPos.y);
+            this.currentPathIndex = 0;
+            
+            if (!this.path || this.path.length === 0) {
+                // 无法找到路径，尝试直接移动（备用方案）
+                return this.moveDirectly(agent, dx, dy, distance, map);
+            }
+        }
+        
+        // 沿路径移动
+        const currentTarget = this.path[this.currentPathIndex];
+        const tdx = currentTarget.x - agent.x;
+        const tdy = currentTarget.y - agent.y;
+        const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
+        
+        if (tdist < 5) {
+            // 到达当前路径点，去下一个
+            this.currentPathIndex++;
+            if (this.currentPathIndex >= this.path.length) {
+                // 到达终点
+                agent.vx = 0;
+                agent.vy = 0;
+                this.isRunning = false;
+                return true;
+            }
+            return false;
+        }
+        
+        // 向当前路径点移动
+        const speed = 1.5;
+        agent.vx = (tdx / tdist) * speed;
+        agent.vy = (tdy / tdist) * speed;
+        
+        return false;
+    }
+    
+    // 直接移动（备用方案）
+    moveDirectly(agent, dx, dy, distance, map) {
         const speed = 1.5;
         let vx = (dx / distance) * speed;
         let vy = (dy / distance) * speed;
         
-        // 检查碰撞 - 如果会碰到障碍物，尝试绕路
+        // 检查碰撞
         const newX = agent.x + vx;
         const newY = agent.y + vy;
         
         if (map.checkCollision(newX, newY, agent.width || 24, agent.height || 24)) {
-            // 尝试只沿X方向移动
             if (!map.checkCollision(agent.x + vx, agent.y, agent.width || 24, agent.height || 24)) {
                 vy = 0;
-            }
-            // 尝试只沿Y方向移动
-            else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
+            } else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
                 vx = 0;
-            }
-            // 都撞，停止并稍后再试
-            else {
+            } else {
                 vx = 0;
                 vy = 0;
             }
@@ -278,110 +349,33 @@ class MoveHomeAction extends GOAPAction {
         agent.vy = vy;
         
         return false;
+    }
+}
+
+// 移动回家行动
+class MoveHomeAction extends PathfindingMoveAction {
+    constructor() {
+        super('MoveHome', (map, agent) => getBuildingPosition(map, agent.homeBuilding));
+        this.preconditions = {};
+        this.effects = { atHome: true };
     }
 }
 
 // 移动去工作行动
-class MoveToWorkAction extends GOAPAction {
+class MoveToWorkAction extends PathfindingMoveAction {
     constructor() {
-        super('MoveToWork', 1);
+        super('MoveToWork', (map, agent) => getBuildingPosition(map, agent.workBuilding));
         this.preconditions = {};
         this.effects = { atWork: true };
-    }
-    
-    perform(agent, worldState, deltaTime, gameplay) {
-        this.isRunning = true;
-        
-        const map = gameplay.game.map;
-        const workPos = getBuildingPosition(map, agent.workBuilding);
-        
-        const dx = workPos.x - agent.x;
-        const dy = workPos.y - agent.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < 10) {
-            agent.vx = 0;
-            agent.vy = 0;
-            this.isRunning = false;
-            return true;
-        }
-        
-        // 计算目标速度
-        const speed = 1.5;
-        let vx = (dx / distance) * speed;
-        let vy = (dy / distance) * speed;
-        
-        // 检查碰撞
-        const newX = agent.x + vx;
-        const newY = agent.y + vy;
-        
-        if (map.checkCollision(newX, newY, agent.width || 24, agent.height || 24)) {
-            if (!map.checkCollision(agent.x + vx, agent.y, agent.width || 24, agent.height || 24)) {
-                vy = 0;
-            } else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
-                vx = 0;
-            } else {
-                vx = 0;
-                vy = 0;
-            }
-        }
-        
-        agent.vx = vx;
-        agent.vy = vy;
-        
-        return false;
     }
 }
 
 // 移动去饭店行动
-class MoveToRestaurantAction extends GOAPAction {
+class MoveToRestaurantAction extends PathfindingMoveAction {
     constructor() {
-        super('MoveToRestaurant', 1);
+        super('MoveToRestaurant', (map, agent) => getBuildingPosition(map, 'restaurant'));
         this.preconditions = {};
         this.effects = { atRestaurant: true };
-    }
-    
-    perform(agent, worldState, deltaTime, gameplay) {
-        this.isRunning = true;
-        
-        const map = gameplay.game.map;
-        const restaurantPos = getBuildingPosition(map, 'restaurant');
-        
-        const dx = restaurantPos.x - agent.x;
-        const dy = restaurantPos.y - agent.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < 10) {
-            agent.vx = 0;
-            agent.vy = 0;
-            this.isRunning = false;
-            return true;
-        }
-        
-        // 计算目标速度
-        const speed = 1.5;
-        let vx = (dx / distance) * speed;
-        let vy = (dy / distance) * speed;
-        
-        // 检查碰撞
-        const newX = agent.x + vx;
-        const newY = agent.y + vy;
-        
-        if (map.checkCollision(newX, newY, agent.width || 24, agent.height || 24)) {
-            if (!map.checkCollision(agent.x + vx, agent.y, agent.width || 24, agent.height || 24)) {
-                vy = 0;
-            } else if (!map.checkCollision(agent.x, agent.y + vy, agent.width || 24, agent.height || 24)) {
-                vx = 0;
-            } else {
-                vx = 0;
-                vy = 0;
-            }
-        }
-        
-        agent.vx = vx;
-        agent.vy = vy;
-        
-        return false;
     }
 }
 
