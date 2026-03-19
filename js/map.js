@@ -406,6 +406,143 @@ class GameMap {
         }
         return null;
     }
+    
+    // 检查瓦片是否可行走（用于寻路）
+    isTileWalkable(x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+            return false;
+        }
+        const tile = this.tiles[y][x];
+        // 草地、道路、人行道、沙滩、公园、桥是可行走的
+        return tile === this.TILE_TYPES.GRASS ||
+               tile === this.TILE_TYPES.ROAD ||
+               tile === this.TILE_TYPES.ROAD_SIDEWALK ||
+               tile === this.TILE_TYPES.SAND ||
+               tile === this.TILE_TYPES.PARK ||
+               tile === this.TILE_TYPES.BRIDGE;
+    }
+    
+    // A*寻路算法
+    findPath(startX, startY, endX, endY) {
+        // 转换为瓦片坐标
+        const startTileX = Math.floor(startX / this.tileSize);
+        const startTileY = Math.floor(startY / this.tileSize);
+        const endTileX = Math.floor(endX / this.tileSize);
+        const endTileY = Math.floor(endY / this.tileSize);
+        
+        // 如果起点或终点不可行走，返回null
+        if (!this.isTileWalkable(startTileX, startTileY) || 
+            !this.isTileWalkable(endTileX, endTileY)) {
+            return null;
+        }
+        
+        // A*算法
+        const openSet = [];
+        const closedSet = new Set();
+        const cameFrom = new Map();
+        const gScore = new Map();
+        const fScore = new Map();
+        
+        const startKey = `${startTileX},${startTileY}`;
+        const endKey = `${endTileX},${endTileY}`;
+        
+        openSet.push({ x: startTileX, y: startTileY });
+        gScore.set(startKey, 0);
+        fScore.set(startKey, this.heuristic(startTileX, startTileY, endTileX, endTileY));
+        
+        let iterations = 0;
+        const MAX_ITERATIONS = 1000;
+        
+        while (openSet.length > 0 && iterations < MAX_ITERATIONS) {
+            iterations++;
+            
+            // 找到fScore最小的节点
+            openSet.sort((a, b) => {
+                const aKey = `${a.x},${a.y}`;
+                const bKey = `${b.x},${b.y}`;
+                return (fScore.get(aKey) || Infinity) - (fScore.get(bKey) || Infinity);
+            });
+            
+            const current = openSet.shift();
+            const currentKey = `${current.x},${current.y}`;
+            
+            // 到达目标
+            if (currentKey === endKey) {
+                return this.reconstructPath(cameFrom, current);
+            }
+            
+            closedSet.add(currentKey);
+            
+            // 检查邻居（8个方向）
+            const neighbors = [
+                { x: current.x + 1, y: current.y },
+                { x: current.x - 1, y: current.y },
+                { x: current.x, y: current.y + 1 },
+                { x: current.x, y: current.y - 1 },
+                { x: current.x + 1, y: current.y + 1 },
+                { x: current.x + 1, y: current.y - 1 },
+                { x: current.x - 1, y: current.y + 1 },
+                { x: current.x - 1, y: current.y - 1 }
+            ];
+            
+            for (const neighbor of neighbors) {
+                const neighborKey = `${neighbor.x},${neighbor.y}`;
+                
+                // 如果已经处理过或不可行走，跳过
+                if (closedSet.has(neighborKey)) continue;
+                if (!this.isTileWalkable(neighbor.x, neighbor.y)) continue;
+                
+                // 对角线移动时要检查两边
+                if (Math.abs(neighbor.x - current.x) === 1 && Math.abs(neighbor.y - current.y) === 1) {
+                    if (!this.isTileWalkable(current.x, neighbor.y) || 
+                        !this.isTileWalkable(neighbor.x, current.y)) {
+                        continue;
+                    }
+                }
+                
+                // 计算gScore
+                const tentativeGScore = (gScore.get(currentKey) || 0) + 
+                    ((neighbor.x !== current.x && neighbor.y !== current.y) ? 1.414 : 1);
+                
+                const existingGScore = gScore.get(neighborKey);
+                if (existingGScore === undefined || tentativeGScore < existingGScore) {
+                    cameFrom.set(neighborKey, current);
+                    gScore.set(neighborKey, tentativeGScore);
+                    fScore.set(neighborKey, tentativeGScore + this.heuristic(neighbor.x, neighbor.y, endTileX, endTileY));
+                    
+                    // 如果不在openSet中，添加
+                    if (!openSet.some(n => n.x === neighbor.x && n.y === neighbor.y)) {
+                        openSet.push(neighbor);
+                    }
+                }
+            }
+        }
+        
+        // 找不到路径
+        return null;
+    }
+    
+    // 启发式函数（曼哈顿距离）
+    heuristic(x1, y1, x2, y2) {
+        return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+    }
+    
+    // 重建路径
+    reconstructPath(cameFrom, current) {
+        const path = [];
+        let currentKey = `${current.x},${current.y}`;
+        
+        while (cameFrom.has(currentKey)) {
+            path.unshift({
+                x: current.x * this.tileSize + this.tileSize / 2,
+                y: current.y * this.tileSize + this.tileSize / 2
+            });
+            current = cameFrom.get(currentKey);
+            currentKey = `${current.x},${current.y}`;
+        }
+        
+        return path;
+    }
 }
 
 // 为了测试，导出模块
