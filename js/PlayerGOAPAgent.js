@@ -149,9 +149,10 @@ class PlayerGOAPAgent {
                 break;
                 
             case 'explore':
-                // 随机选择几个点逛逛
+                // 随机选择一个地点，先移动到那里，然后再漫步
                 const locations = ['park', 'dock', 'townHall'];
                 const target = locations[Math.floor(Math.random() * locations.length)];
+                plan.push({ name: '前往探索地', type: 'move', target: target });
                 plan.push({ name: '漫步', type: 'wander', target: target, duration: 8000 });
                 break;
                 
