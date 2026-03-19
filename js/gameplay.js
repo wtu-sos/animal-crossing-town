@@ -614,8 +614,11 @@ class GameplaySystem {
             }
             
             // 调试：输出NPC状态
-            if (window.game && window.game.debug && i === 0 && Math.random() < 0.02) {
-                console.log(`[${npc.name}] pos:(${npc.x.toFixed(0)},${npc.y.toFixed(0)}) vx:${npc.vx.toFixed(2)} vy:${npc.vy.toFixed(2)} isMoving:${npc.isMoving} action:${agent.currentAction ? agent.currentAction.name : 'null'}`);
+            if (window.game && window.game.debug && i === 0 && Math.random() < 0.05) {
+                const actionName = agent.currentAction ? agent.currentAction.name : 'null';
+                const pathInfo = agent.currentAction && agent.currentAction.path ? 
+                    `path:${agent.currentAction.currentPathIndex}/${agent.currentAction.path.length}` : 'no-path';
+                console.log(`[${npc.name}] pos:(${npc.x.toFixed(0)},${npc.y.toFixed(0)}) vx:${npc.vx.toFixed(2)} vy:${npc.vy.toFixed(2)} isMoving:${npc.isMoving} action:${actionName} ${pathInfo}`);
             }
         }
     }
@@ -628,9 +631,20 @@ class GameplaySystem {
         // 检查与地图的碰撞
         const mapCollision = this.game.map.checkCollision(newX, newY, npc.width, npc.height);
         if (mapCollision) {
-            // 碰到墙壁，改变方向
-            npc.vx *= -1;
-            npc.vy *= -1;
+            // 碰到墙壁，停止移动并让NPC重新寻路
+            npc.vx = 0;
+            npc.vy = 0;
+            npc.isMoving = false;
+            
+            // 触发重新寻路 - 找到对应的agent并清除当前路径
+            const agentIndex = this.npcs.indexOf(npc);
+            if (agentIndex !== -1 && this.agents[agentIndex]) {
+                const agent = this.agents[agentIndex];
+                if (agent.currentAction && agent.currentAction.path) {
+                    agent.currentAction.path = null;
+                    agent.currentAction.currentPathIndex = 0;
+                }
+            }
             return;
         }
         
