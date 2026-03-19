@@ -700,19 +700,39 @@ class GOAPAgent {
         }
     }
     
-    // 制定计划
+    // 制定计划 - 简化版，直接根据目标选择行动
     makePlan() {
-        const plan = this.planner.plan(
-            this.npc,
-            this.actions,
-            this.worldState,
-            this.currentGoal
-        );
+        const plan = [];
         
-        if (plan) {
-            this.currentPlan = plan;
-            console.log(`${this.npc.name} 的计划:`, plan.map(a => a.name).join(' -> '));
+        // 根据当前目标直接添加对应的移动行动
+        if (this.currentGoal) {
+            if (this.currentGoal.atHome || this.currentGoal.energy === 100) {
+                plan.push(new MoveHomeAction());
+                plan.push(new RestAction());
+            } else if (this.currentGoal.atWork || this.currentGoal.hasFlowers || this.currentGoal.hasFish) {
+                plan.push(new MoveToWorkAction());
+                // 根据职业添加工作行动
+                if (this.role === 'gardener') {
+                    plan.push(new PlantFlowerAction());
+                } else if (this.role === 'fisherman') {
+                    plan.push(new FishAction());
+                } else if (this.role === 'miner') {
+                    plan.push(new ChopTreeAction());
+                }
+            } else if (this.currentGoal.atRestaurant || this.currentGoal.isHungry === false) {
+                plan.push(new MoveToRestaurantAction());
+                plan.push(new EatAtRestaurantAction());
+            }
         }
+        
+        // 如果没有计划，默认回家
+        if (plan.length === 0) {
+            console.log(`${this.npc.name} 使用默认计划: 回家`);
+            plan.push(new MoveHomeAction());
+        }
+        
+        this.currentPlan = plan;
+        console.log(`${this.npc.name} 的计划:`, plan.map(a => a.name).join(' -> '));
     }
     
     // 更新NPC移动
