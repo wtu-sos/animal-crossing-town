@@ -20,8 +20,11 @@ class GameplaySystem {
         // 初始化NPC
         this.npcs = this.generateNPCs();
         
-        // 初始化GOAP Agents
-        this.agents = this.initGOAPAgents();
+        // 初始化GOAP Agents - 延迟初始化，等待地图准备好
+        this.agents = [];
+        setTimeout(() => {
+            this.agents = this.initGOAPAgents();
+        }, 100);
         
         // 绑定按键
         this.bindKeys();
@@ -31,11 +34,9 @@ class GameplaySystem {
     initGOAPAgents() {
         const agents = [];
         for (const npc of this.npcs) {
-            const agent = new GOAPAgent(npc, npc.role, this.worldState);
-            // 立即初始化，让NPC开始行动
-            if (this.game) {
-                agent.init(this.game.gameTime || 360);
-            }
+            // 将地图引用传递给NPC
+            npc.map = this.game.map;
+            const agent = new GOAPAgent(npc, npc.role);
             agents.push(agent);
         }
         return agents;
@@ -592,33 +593,34 @@ class GameplaySystem {
     
     // 更新NPC（GOAP驱动）
     updateNPCs(deltaTime = 16) {
-        const gameTime = this.game.gameTime;
+        if (this.agents.length === 0) return;
         
-        // 更新世界状态时间
-        this.worldState.updateTime(gameTime);
+        const gameTime = this.game.gameTime;
         
         // 更新每个GOAP Agent
         for (let i = 0; i < this.agents.length; i++) {
             const agent = this.agents[i];
             const npc = this.npcs[i];
             
-            // GOAP规划更新（传入游戏时间）
+            // GOAP规划更新
             agent.update(deltaTime, this, gameTime);
             
             // 更新动画帧
-            npc.animationFrame = (npc.animationFrame + 1) % 4;
-            
-            // 根据GOAP决策应用移动
             if (npc.isMoving) {
+                npc.animationFrame = (npc.animationFrame + 1) % 4;
+            }
+            
+            // 应用移动并检测碰撞
+            if (npc.vx !== 0 || npc.vy !== 0) {
                 this.moveNPCWithCollision(npc);
             }
             
             // 调试：输出NPC状态
-            if (window.game && window.game.debug && i === 0 && Math.random() < 0.05) {
-                const actionName = agent.currentAction ? agent.currentAction.name : 'null';
-                const pathInfo = agent.currentAction && agent.currentAction.path ? 
-                    `path:${agent.currentAction.currentPathIndex}/${agent.currentAction.path.length}` : 'no-path';
-                console.log(`[${npc.name}] pos:(${npc.x.toFixed(0)},${npc.y.toFixed(0)}) vx:${npc.vx.toFixed(2)} vy:${npc.vy.toFixed(2)} isMoving:${npc.isMoving} action:${actionName} ${pathInfo}`);
+            if (window.game && window.game.debug && i === 0 && Math.random() < 0.02) {
+                const goalName = agent.currentGoal ? agent.currentGoal.name : 'null';
+                const planInfo = agent.currentPlan.length > 0 ? 
+                    `${agent.currentActionIndex}/${agent.currentPlan.length}` : 'no-plan';
+                console.log(`[${npc.name}] pos:(${npc.x.toFixed(0)},${npc.y.toFixed(0)}) vx:${npc.vx.toFixed(2)} vy:${npc.vy.toFixed(2)} goal:${goalName} plan:${planInfo}`);
             }
         }
     }
