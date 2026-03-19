@@ -317,6 +317,182 @@ class GameMap {
         }
     }
     
+    // 生成可行走网格（用于寻路）
+    generateWalkableGrid() {
+        this.walkableGrid = [];
+        for (let y = 0; y < this.height; y++) {
+            this.walkableGrid[y] = [];
+            for (let x = 0; x < this.width; x++) {
+                const tile = this.tiles[y][x];
+                // 草地、道路、人行道、沙滩、公园、桥可行走
+                const walkable = [
+                    this.TILE_TYPES.GRASS,
+                    this.TILE_TYPES.ROAD,
+                    this.TILE_TYPES.ROAD_SIDEWALK,
+                    this.TILE_TYPES.SAND,
+                    this.TILE_TYPES.PARK,
+                    this.TILE_TYPES.BRIDGE
+                ].includes(tile);
+                this.walkableGrid[y][x] = walkable ? 1 : 0;
+            }
+        }
+    }
+    
+    // A*寻路算法
+    findPath(startX, startY, endX, endY) {
+        // 转换为瓦片坐标
+        const startTileX = Math.floor(startX / this.tileSize);
+        const startTileY = Math.floor(startY / this.tileSize);
+        const endTileX = Math.floor(endX / this.tileSize);
+        const endTileY = Math.floor(endY / this.tileSize);
+        
+        // 边界检查
+        if (startTileX < 0 || startTileX >= this.width || startTileY < 0 || startTileY >= this.height ||
+            endTileX < 0 || endTileX >= this.width || endTileY < 0 || endTileY >= this.height) {
+            return null;
+        }
+        
+        // 如果起点或终点不可行走，找最近的可用点
+        let actualStartX = startTileX, actualStartY = startTileY;
+        let actualEndX = endTileX, actualEndY = endTileY;
+        
+        if (!this.walkableGrid[startTileY][startTileX]) {
+            const nearest = this.findNearestWalkable(startTileX, startTileY);
+            if (nearest) { actualStartX = nearest.x; actualStartY = nearest.y; }
+        }
+        
+        if (!this.walkableGrid[endTileY][endTileX]) {
+            const nearest = this.findNearestWalkable(endTileX, endTileY);
+            if (nearest) { actualEndX = nearest.x; actualEndY = nearest.y; }
+        }
+        
+        // A*算法
+        const openSet = [];
+        const closedSet = new Set();
+        const cameFrom = new Map();
+        const gScore = new Map();
+        const fScore = new Map();
+        
+        const startKey = `${actualStartX},${actualStartY}`;
+        const endKey = `${actualEndX},${actualEndY}`;
+        
+        openSet.push({ x: actualStartX, y: actualStartY, key: startKey });
+        gScore.set(startKey, 0);
+        fScore.set(startKey, this.heuristic(actualStartX, actualStartY, actualEndX, actualEndY));
+        
+        let iterations = 0;
+        const MAX_ITERATIONS = 2000;
+        
+        while (openSet.length > 0 && iterations < MAX_ITERATIONS) {
+            iterations++;
+            
+            // 找f值最小的节点
+            openSet.sort((a, b) => (fScore.get(a.key) || Infinity) - (fScore.get(b.key) || Infinity));
+            const current = openSet.shift();
+            
+            if (current.key === endKey) {
+                // 找到路径，重建
+                return this.reconstructPath(cameFrom, current, actualEndX, actualEndY);
+            }
+            
+            closedSet.add(current.key);
+            
+            // 检查邻居
+            const neighbors = this.getNeighbors(current.x, current.y);
+            for (const neighbor of neighbors) {
+                if (closedSet.has(neighbor.key)) continue;
+                
+                const tentativeG = (gScore.get(current.key) || 0) + 1;
+                
+                if (!openSet.find(n => n.key === neighbor.key)) {
+                    openSet.push(neighbor);
+                } else if (tentativeG >= (gScore.get(neighbor.key) || Infinity)) {
+                    continue;
+                }
+                
+                cameFrom.set(neighbor.key, current);
+                gScore.set(neighbor.key, tentativeG);
+                fScore.set(neighbor.key, tentativeG + this.heuristic(neighbor.x, neighbor.y, actualEndX, actualEndY));
+            }
+        }
+        
+        return null;
+    }
+    
+    // 启发函数（曼哈顿距离）
+    heuristic(x1, y1, x2, y2) {
+        return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+    }
+    
+    // 获取邻居节点
+    getNeighbors(x, y) {
+        const neighbors = [];
+        const directions = [
+            { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+            { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
+            { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
+        ];
+        
+        for (const dir of directions) {
+            const nx = x + dir.dx;
+            const ny = y + dir.dy;
+            
+            if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                if (this.walkableGrid[ny][nx]) {
+                    neighbors.push({ x: nx, y: ny, key: `${nx},${ny}` });
+                }
+            }
+        }
+        
+        return neighbors;
+    }
+    
+    // 重建路径
+    reconstructPath(cameFrom, current, endX, endY) {
+        const path = [{ x: endX * this.tileSize + this.tileSize / 2, y: endY * this.tileSize + this.tileSize / 2 }];
+        
+        let key = current.key;
+        while (cameFrom.has(key)) {
+            const current = cameFrom.get(key);
+            path.unshift({
+                x: current.x * this.tileSize + this.tileSize / 2,
+                y: current.y * this.tileSize + this.tileSize / 2
+            });
+            key = current.key;
+        }
+        
+        return path;
+    }
+    
+    // 找最近的可用行走点
+    findNearestWalkable(x, y) {
+        const queue = [{ x, y }];
+        const visited = new Set([`${x},${y}`]);
+        
+        while (queue.length > 0) {
+            const current = queue.shift();
+            
+            if (this.walkableGrid[current.y][current.x]) {
+                return current;
+            }
+            
+            const directions = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }];
+            for (const dir of directions) {
+                const nx = current.x + dir.dx;
+                const ny = current.y + dir.dy;
+                const key = `${nx},${ny}`;
+                
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height && !visited.has(key)) {
+                    visited.add(key);
+                    queue.push({ x: nx, y: ny });
+                }
+            }
+        }
+        
+        return null;
+    }
+    
     // 获取瓦片类型
     getTile(x, y) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
