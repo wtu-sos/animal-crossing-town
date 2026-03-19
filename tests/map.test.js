@@ -240,4 +240,159 @@ describe('GameMap', () => {
       }
     });
   });
+
+  describe('A*寻路系统', () => {
+    test('应该生成可行走网格', () => {
+      expect(map.walkableGrid).toBeDefined();
+      expect(map.walkableGrid.length).toBe(80);
+      expect(map.walkableGrid[0].length).toBe(80);
+    });
+
+    test('可行走网格应该正确标记可行走区域', () => {
+      // 找到道路位置，应该是可行走的
+      let roadX = -1, roadY = -1;
+      for (let y = 0; y < map.height && roadX === -1; y++) {
+        for (let x = 0; x < map.width; x++) {
+          if (map.tiles[y][x] === map.TILE_TYPES.ROAD) {
+            roadX = x;
+            roadY = y;
+            break;
+          }
+        }
+      }
+      
+      if (roadX !== -1) {
+        expect(map.walkableGrid[roadY][roadX]).toBe(1);
+      }
+    });
+
+    test('可行走网格应该正确标记不可行走区域', () => {
+      // 找到建筑位置，应该是不可行走的
+      let buildingX = -1, buildingY = -1;
+      for (let y = 0; y < map.height && buildingX === -1; y++) {
+        for (let x = 0; x < map.width; x++) {
+          if (map.tiles[y][x] === map.TILE_TYPES.BUILDING_HOUSE ||
+              map.tiles[y][x] === map.TILE_TYPES.BUILDING_SHOP) {
+            buildingX = x;
+            buildingY = y;
+            break;
+          }
+        }
+      }
+      
+      if (buildingX !== -1) {
+        expect(map.walkableGrid[buildingY][buildingX]).toBe(0);
+      }
+    });
+
+    test('findPath应该能找到从家到工作的路径', () => {
+      const startPos = map.getBuildingPosition('playerHouse');
+      const endPos = map.getBuildingPosition('flowerShop');
+      
+      const path = map.findPath(startPos.x, startPos.y, endPos.x, endPos.y);
+      
+      expect(path).not.toBeNull();
+      expect(path.length).toBeGreaterThan(0);
+      expect(path[path.length - 1].x).toBeCloseTo(endPos.x, -1);
+      expect(path[path.length - 1].y).toBeCloseTo(endPos.y, -1);
+    });
+
+    test('findPath路径不应该穿过障碍物', () => {
+      const startPos = map.getBuildingPosition('playerHouse');
+      const endPos = map.getBuildingPosition('flowerShop');
+      
+      const path = map.findPath(startPos.x, startPos.y, endPos.x, endPos.y);
+      
+      // 检查路径上的每个点都是可行走的
+      for (const point of path) {
+        const tileX = Math.floor(point.x / map.tileSize);
+        const tileY = Math.floor(point.y / map.tileSize);
+        if (tileX >= 0 && tileX < map.width && tileY >= 0 && tileY < map.height) {
+          expect(map.walkableGrid[tileY][tileX]).toBe(1);
+        }
+      }
+    });
+
+    test('findPath应该处理起点被阻挡的情况', () => {
+      // 找一个建筑内部的点作为起点
+      const building = map.BUILDINGS['playerHouse'];
+      const blockedStartX = (building.x + 1) * map.tileSize;
+      const blockedStartY = (building.y + 1) * map.tileSize;
+      const endPos = map.getBuildingPosition('flowerShop');
+      
+      const path = map.findPath(blockedStartX, blockedStartY, endPos.x, endPos.y);
+      
+      // 应该能找到路径（自动找到最近的可用点）
+      expect(path).not.toBeNull();
+    });
+
+    test('findPath应该处理终点被阻挡的情况', () => {
+      const startPos = map.getBuildingPosition('playerHouse');
+      
+      // 找一个建筑内部的点作为终点
+      const building = map.BUILDINGS['flowerShop'];
+      const blockedEndX = (building.x + 1) * map.tileSize;
+      const blockedEndY = (building.y + 1) * map.tileSize;
+      
+      const path = map.findPath(startPos.x, startPos.y, blockedEndX, blockedEndY);
+      
+      // 应该能找到路径（自动找到最近的可用点）
+      expect(path).not.toBeNull();
+    });
+
+    test('findPath应该返回平滑的路径', () => {
+      const startPos = map.getBuildingPosition('playerHouse');
+      const endPos = map.getBuildingPosition('dock');
+      
+      const path = map.findPath(startPos.x, startPos.y, endPos.x, endPos.y);
+      
+      // 路径应该是连续的（相邻点之间的距离应该相近）
+      for (let i = 1; i < path.length; i++) {
+        const dx = path[i].x - path[i-1].x;
+        const dy = path[i].y - path[i-1].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        // 相邻点之间的距离应该在合理范围内（不超过一个瓦片对角线）
+        expect(dist).toBeLessThanOrEqual(map.tileSize * 1.5);
+      }
+    });
+
+    test('heuristic应该计算正确的曼哈顿距离', () => {
+      const h1 = map.heuristic(0, 0, 10, 10);
+      expect(h1).toBe(20);
+      
+      const h2 = map.heuristic(5, 5, 5, 5);
+      expect(h2).toBe(0);
+      
+      const h3 = map.heuristic(0, 0, 0, 15);
+      expect(h3).toBe(15);
+    });
+
+    test('getNeighbors应该返回正确的邻居节点', () => {
+      const neighbors = map.getNeighbors(10, 10);
+      
+      // 应该返回8个方向（如果都可行走）
+      expect(neighbors.length).toBeGreaterThan(0);
+      expect(neighbors.length).toBeLessThanOrEqual(8);
+      
+      // 检查邻居的坐标
+      for (const neighbor of neighbors) {
+        const dx = Math.abs(neighbor.x - 10);
+        const dy = Math.abs(neighbor.y - 10);
+        expect(dx).toBeLessThanOrEqual(1);
+        expect(dy).toBeLessThanOrEqual(1);
+      }
+    });
+
+    test('findNearestWalkable应该找到最近的可用点', () => {
+      // 找一个建筑内部的点
+      const building = map.BUILDINGS['playerHouse'];
+      const blockedX = building.x + 1;
+      const blockedY = building.y + 1;
+      
+      const nearest = map.findNearestWalkable(blockedX, blockedY);
+      
+      expect(nearest).not.toBeNull();
+      expect(map.walkableGrid[nearest.y][nearest.x]).toBe(1);
+    });
+  });
 });
