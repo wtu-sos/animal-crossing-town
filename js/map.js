@@ -315,6 +315,9 @@ class GameMap {
                 interactive: true
             });
         }
+        
+        // 生成可行走网格（用于寻路）
+        this.generateWalkableGrid();
     }
     
     // 生成可行走网格（用于寻路）
@@ -356,14 +359,24 @@ class GameMap {
         let actualStartX = startTileX, actualStartY = startTileY;
         let actualEndX = endTileX, actualEndY = endTileY;
         
-        if (!this.walkableGrid[startTileY][startTileX]) {
+        if (!this.walkableGrid[startTileY] || !this.walkableGrid[startTileY][startTileX]) {
             const nearest = this.findNearestWalkable(startTileX, startTileY);
-            if (nearest) { actualStartX = nearest.x; actualStartY = nearest.y; }
+            if (nearest) { 
+                actualStartX = nearest.x; 
+                actualStartY = nearest.y; 
+            } else {
+                return null; // 找不到可用的起点
+            }
         }
         
-        if (!this.walkableGrid[endTileY][endTileX]) {
+        if (!this.walkableGrid[endTileY] || !this.walkableGrid[endTileY][endTileX]) {
             const nearest = this.findNearestWalkable(endTileX, endTileY);
-            if (nearest) { actualEndX = nearest.x; actualEndY = nearest.y; }
+            if (nearest) { 
+                actualEndX = nearest.x; 
+                actualEndY = nearest.y; 
+            } else {
+                return null; // 找不到可用的终点
+            }
         }
         
         // A*算法
@@ -391,8 +404,8 @@ class GameMap {
             const current = openSet.shift();
             
             if (current.key === endKey) {
-                // 找到路径，重建
-                return this.reconstructPath(cameFrom, current, actualEndX, actualEndY);
+                // 找到路径，重建 - 传入原始终点像素坐标
+                return this.reconstructPath(cameFrom, current, endX, endY);
             }
             
             closedSet.add(current.key);
@@ -449,17 +462,20 @@ class GameMap {
     }
     
     // 重建路径
-    reconstructPath(cameFrom, current, endX, endY) {
-        const path = [{ x: endX * this.tileSize + this.tileSize / 2, y: endY * this.tileSize + this.tileSize / 2 }];
+    reconstructPath(cameFrom, current, originalEndX, originalEndY) {
+        const path = [];
+        
+        // 使用原始终点像素坐标（传入的目标位置）
+        path.push({ x: originalEndX, y: originalEndY });
         
         let key = current.key;
         while (cameFrom.has(key)) {
-            const current = cameFrom.get(key);
+            const node = cameFrom.get(key);
             path.unshift({
-                x: current.x * this.tileSize + this.tileSize / 2,
-                y: current.y * this.tileSize + this.tileSize / 2
+                x: node.x * this.tileSize + this.tileSize / 2,
+                y: node.y * this.tileSize + this.tileSize / 2
             });
-            key = current.key;
+            key = node.key;
         }
         
         return path;
