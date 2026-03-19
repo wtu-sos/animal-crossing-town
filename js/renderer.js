@@ -507,9 +507,10 @@ class Renderer {
         if (timeDisplay) {
             const hours = Math.floor(time / 60);
             const minutes = Math.floor(time % 60);
+            const seconds = Math.floor((time % 1) * 60);
             const icon = hours < 6 || hours > 18 ? '🌙' : hours < 12 ? '🌅' : '☀️';
             // 固定格式，避免宽度变化
-            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             timeDisplay.innerHTML = `<span class="time-icon">${icon}</span><span class="time-text">2025-03-19 ${timeStr}</span>`;
         }
 
